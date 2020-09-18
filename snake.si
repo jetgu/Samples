@@ -2,7 +2,7 @@
 根据C语言源代码改编成Silk语言
 原C语言参考地址ttps://blog.csdn.net/qq_15072163/article/details/100601582，感谢原作者。
 */
-
+//this is a silk program which illustrates the skills of silk programming
 
 SNAKESIZE = 100;//蛇的身体最大节数
 MAPWIDTH = 78;//宽度

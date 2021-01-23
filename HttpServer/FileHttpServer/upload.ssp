@@ -1,0 +1,86 @@
+<?silk
+	#include "functions.ssp"
+    
+    func upload_url(DirName)
+    {
+		response.write(sprintf("/upload_process.ssp?dir=%s",DirName)); 
+    }
+    
+	args=_getargv()[0]; 
+	env=args["ENV"]; 
+	upload_max=args["GLOBALS"]["upload_max"]; 
+	upload_enable=true;
+
+    cookies=GetCookies(args);
+    nRet=FindUser(args,cookies);
+    if(nRet==-1)
+    {
+		Redirect(args,"/login.ssp");
+        return "";
+    }
+    
+	query=env["QUERY_DICT"];
+	DirName=query.find("dir");
+	if(DirName)
+	{	
+		DirName=_fun("url_unescape",DirName);
+		DirName=DirName.replace("+"," ");
+	}	    
+            
+?>    
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="gb2312"> 
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>Silk File Server</title>
+	<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css">  
+	<script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+<body>
+
+<br><br>
+
+<div class="container-fluid">
+
+<div class="panel panel-primary">
+	<div class="panel-heading">
+		<h3 class="panel-title" align="center">Upload file</h3>
+	</div>
+	<div class="panel-body">
+	
+	<?silk
+		response.write("<div class=\"panel panel-default\"> <div class=\"panel-body\">");
+		buff=sprintf("<a href='/getlist.ssp?dir=%s'><strong>Back</strong></a>",DirName);
+		response.write(buff);
+        response.write("</div></div>");
+        
+		if(!upload_enable)
+		{
+			response.write("No upload permission.");
+			response.write("</div></body></html>");
+            return response.content;
+        }
+    ?>
+
+<form role="form" method="POST" action="<?silk upload_url(DirName); ?>" enctype="multipart/form-data">
+
+	<div class="form-group">
+		<label for="inputfile"><?silk response.write(sprintf("Please select a file (max file size: %dMB)",upload_max)); ?></label>
+		<input name="UploadedFile" type="file" id="UploadedFile">
+		<p class="help-block"></p>
+	</div>
+	<button type="submit" class="btn btn-default">Upload</button>
+</form>
+    
+    
+	</div>
+</div>
+</div>
+
+
+</body>
+</html>
+

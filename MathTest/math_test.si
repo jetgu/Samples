@@ -1,0 +1,51 @@
+main()
+{
+	PI=3.14159265;
+
+	x = 60.0;
+	val = PI / 180.0;
+	ret = _fun("math_cos", x*val );
+	printf("%lf 的余弦是 %lf 度\n", x, ret);
+
+	x = 45.0;
+	val = PI / 180;
+	ret =  _fun("math_sin", x*val );
+	printf("%lf 的正弦是 %lf 度\n", x, ret);
+
+	x = 0.65;
+	n = 3;
+	ret =  _fun("math_ldexp",x ,n);
+	printf("%f * 2^%d = %f\n", x, n, ret); 
+
+	x = 1024;
+	ret =  _fun("math_frexp",x);
+	printf("x = %d = %.2lf * 2^%d\n", x, ret[0], ret[1]);
+
+	x = 8.123456;
+	ret =  _fun("math_modf",x);
+	printf("整数部分 = %lf\n", ret[0]);
+	printf("小数部分 = %lf \n", ret[1]);  
+
+	ret=_fun("math_pow",8,3);
+	printf("8 ^ 3 = %lf\n", ret);
+
+	ret=_fun("math_fabs",-3.05);
+	printf("fabs(-3.05) = %lf\n",ret);  
+    
+	x = 2.3;
+	ret=_fun("math_log",x);
+	printf("log(%lf) = %lf\n", x, ret);
+
+	x = 100000;
+	ret=_fun("math_log10",x);
+	printf("log10(%d) = %lf\n", x, ret);
+	
+    x = 2;
+	ret=_fun("math_sqrt",x);
+	printf("%d 的平方根是 %lf\n", x, ret );
+   
+	a = 9.2;
+	b = 3.8;
+	ret=_fun("math_fmod",a,b);
+	printf("%f / %f 的余数是 %lf\n", a, b, ret);
+}

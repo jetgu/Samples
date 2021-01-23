@@ -1,0 +1,44 @@
+/*
+A Http file server which supports download/upload and account/shared folder administration
+All the server side scripting files are in the FileHttpServer directory.
+The initial Username/Password is admin/test123
+一个继承自HttpServer的文件web服务器，可以上传下载文件，增加删除共享目录和用户
+FileHttpServer目录下是所有的服务器端脚本文件（.ssp）
+初始用户名：admin ，密码：test123
+*/
+
+#include "HttpServer.si"
+
+class CMyHttpServer(port)
+{
+	self=CHttpServer(port);
+	self.MAX_RECV=1024*1024*100;//max upload data is 100MB
+     
+	func set_globals()
+    {
+		self.mime[".c"]="text/plain";
+		self.mime[".cpp"]="text/plain";
+		self.mime[".h"]="text/plain";
+		self.mime[".si"]="text/plain";
+    
+        self.globals["curdir"]=self.get_curdir();
+        self.globals["mime"]=self.mime;
+        self.globals["lock"]=_createlock();
+        self.globals["sessions"]={};
+        self.globals["usernames"]={};
+        
+        self.globals["upload_max"]=self.MAX_RECV/1024/1024;
+    }
+}
+
+main()
+{
+    PORT=9001;
+    if(_getargv().size()>1)
+        PORT=_int(_getargv()[1]);
+
+    server=CMyHttpServer(PORT);
+	server.set_defaultdir(server.get_curdir()+"FileHttpServer","getlist.ssp");
+	server.set_globals();
+	server.run();
+}

@@ -1,0 +1,66 @@
+#include "../include/file.si"
+
+class CLogFile()
+{
+	self=CFile();
+	self.lock=_createlock();
+	
+    func OpenFile(filename)
+    {
+        curdir=_fun("curdir");
+        if(curdir.size()==0)
+			curdir="./";
+		self.Open(curdir+filename,"w");    
+    }
+	func Log(str)
+	{
+		buff=sprintf("[%s] %s\r\n",_fun("time_now")["time_str"],str);
+		_lock(self.lock);
+		printf(buff);
+		self.Write(buff);
+		_unlock(self.lock);
+	}
+}
+
+func Encrypt(data,key)
+{
+	if(key==null)
+		return data;
+	return _fun("encrypt",data,key);
+}
+
+func sock_readwrite(sock1,sock2,key)
+{
+	sock1.timeout(30);
+    sock2.timeout(30);
+	buff_size=4096;
+	while(true)
+	{
+		recv=sock1.recv(buff_size);
+		if(recv.size()>0)
+		{	
+			if(sock2.send(Encrypt(recv,key))<=0)
+				break;
+		}
+		else
+			break;
+	}
+	sock1.shutdown(2);
+	sock2.shutdown(2);
+	sock1.close();
+}
+
+func read_all(sock,len)
+{
+	recvAll="";
+	recvLen=0;
+    while(recvLen<len)
+    {
+		buff=sock.recv(len-recvLen);
+        if(buff.size()<=0)
+			break;
+        recvLen+=buff.size();
+        recvAll+=buff;    
+    }
+    return recvAll;
+}

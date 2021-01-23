@@ -1,0 +1,226 @@
+#include "../include/socket.si"
+#include "../include/file.si"
+#include "../include/common.si"
+#include "../include/json.si"
+
+class CHttpClient()
+{
+    self.headers={};
+    self.headers["Cache-Control"]="max-age=0";
+    self.headers["Accept"]="text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9";
+    self.headers["User-Agent"]="Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1";
+    
+	func get(url,head=null)
+    {
+		port=80;
+		host=url;
+        page="/";
+        
+        pos=url.find("https://");
+        if(pos==0)
+			return "https is not supported.";
+        pos=url.find("http://");
+        if(pos==0)
+        {
+            url=url.substr(pos+_len("http://"));
+            host=url;
+        }
+        pos=url.find("/");
+        if(pos>0)
+        {
+			host=url.substr(0,pos);
+            page=url.substr(pos);
+        }
+        host_port=host.split(":");
+        if(host_port.size()==2)
+        {
+			host=host_port[0];
+        	port=_int(host_port[1]);
+        }
+		
+		sock=CSocket();
+		if(sock.connect(host,port))
+		{
+			header=sprintf("GET %s HTTP/1.0\r\n",page);
+			header+=sprintf("Host: %s:%d\r\n",host,port);
+            
+            headers=_copy(self.headers);
+			if(_type(head)=="DICT")
+            {
+				for(i=head.begin();!head.end(i);head.next(i))
+				{
+					kv=head.get(i);
+					headers[kv[0]]=kv[1];
+				}
+            }
+            for(i=headers.begin();!headers.end(i);headers.next(i))
+            {
+				kv=headers.get(i);
+				header+=sprintf("%s: %s\r\n",kv[0],kv[1]);
+            }
+            
+			header+="Connection: close\r\n";
+			header+="\r\n";
+			//print(header);		
+			sock.send(header);
+            
+            result="";
+            buff_size=4096;
+			buff=sock.recv(buff_size);
+            result+=buff;
+            while(true)
+            {
+				buff=sock.recv(buff_size);
+                if(buff.size()==0)
+					break;
+                result+=buff;
+            }
+			sock.close();
+			
+			pos=result.find("\r\n\r\n");
+			if(pos>0)
+			{
+				html=result.substr(pos+4);
+                return html;
+			}
+            
+            return result;
+		}
+	}
+    
+	func post(url,data,head=null)
+    {
+		port=80;
+		host=url;
+        page="/";
+        
+        pos=url.find("https://");
+        if(pos==0)
+			return "https is not supported.";
+        pos=url.find("http://");
+        if(pos==0)
+        {
+            url=url.substr(pos+_len("http://"));
+            host=url;
+        }
+        pos=url.find("/");
+        if(pos>0)
+        {
+			host=url.substr(0,pos);
+            page=url.substr(pos);
+        }
+        host_port=host.split(":");
+        if(host_port.size()==2)
+        {
+			host=host_port[0];
+        	port=_int(host_port[1]);
+        }
+		
+		sock=CSocket();
+		if(sock.connect(host,port))
+		{
+			header=sprintf("POST %s HTTP/1.0\r\n",page);
+			header+=sprintf("Host: %s:%d\r\n",host,port);
+			header+=sprintf("Content-Length: %d\r\n",data.size());
+            
+            headers=_copy(self.headers);
+			if(_type(head)=="DICT")
+            {
+				for(i=head.begin();!head.end(i);head.next(i))
+				{
+					kv=head.get(i);
+					headers[kv[0]]=kv[1];
+				}
+            }
+            for(i=headers.begin();!headers.end(i);headers.next(i))
+            {
+				kv=headers.get(i);
+				header+=sprintf("%s: %s\r\n",kv[0],kv[1]);
+            }
+
+			header+="Connection: close\r\n";
+			header+="\r\n";
+			//print(header);		
+			sock.send(header);
+
+			sdata="";
+			if(_type(data)=="DICT")
+			{
+				for(i=data.begin();!data.end(i);data.next(i))
+				{
+					kv=data.get(i);
+					key=_fun("url_escape",_str(kv[0]));
+					value=_fun("url_escape",_str(kv[1]));
+					sdata+=sprintf("%s=%s&",key,value);
+				}
+				if(sdata.size()>0)
+						sdata=sdata.substr(0,sdata.size()-1);
+			}
+			sock.send(sdata);
+            
+            result="";
+            buff_size=4096;
+			buff=sock.recv(buff_size);
+            result+=buff;
+            while(true)
+            {
+				buff=sock.recv(buff_size);
+                if(buff.size()==0)
+					break;
+                result+=buff;
+            }
+			sock.close();
+			
+			pos=result.find("\r\n\r\n");
+			if(pos>0)
+			{
+				html=result.substr(pos+4);
+                return html;
+			}
+            
+            return result;
+		}
+	}
+    
+	func download(url,filename)
+	{
+		html=self.get(url);
+		if(html)
+		{
+			f=CFile();
+			if(f.Open(filename,"wb"))
+				f.Write(html);
+			f.Close();
+		}
+	}
+    func utf8(text)
+    {
+		if(_fun("os_platform").find("WIN")<0)
+			return text;
+    
+		comm=CCommon();
+		text=comm.utf8_to_ansi(text);
+		comm.Free();
+        return text;
+    }
+}
+
+
+main()
+{
+	client=CHttpClient();
+    header={
+    "User-Agent":"Mozilla/5.0",
+    "TestField":"This is a Hello from Silk"
+    };
+    
+    //html=client.get("http://www.163.com");
+	html=client.get("http://3g.163.com/touch/reconstruct/article/list/BBM54PGAwangning/1-10.html",header);
+    print(client.utf8(html));
+    //client.download("http://www.163.com","d:\\163.html");
+
+
+    data={"data1":"on","data2":"on","keyword":"Ï°½üÆ½"};
+    html=client.post("http://192.168.1.101:8088/search.si",data,header);
+    //print(html);
+}

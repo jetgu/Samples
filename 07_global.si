@@ -1,0 +1,27 @@
+_gIndex=0;//定义全局变量
+
+func set_index(index)
+{
+    global _gIndex;//使用前声明这是一个全局变量
+    _gIndex=index;//在函数里对变量重新赋值以修改全局变量
+}
+func set_index2(index)
+{
+    _gIndex=index;//这里使用前没有声明为全局变量，所有_gIndex是局部变量
+}
+func print_index()
+{
+    //global _gIndex;//这里只是打印全局变量，没有对变量赋值，所以使用前的声明可以省略
+    print(_gIndex);
+}
+main()
+{
+        print(_gIndex);//打印全局变量
+        set_index(100);//修改全局变量
+        print(_gIndex);//重新打印
+        
+        set_index2(200);//该函数只是对内部的局部变量赋值，无法影响全局变量
+        print(_gIndex);//重新打印
+        
+        print_index();
+}

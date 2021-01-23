@@ -1,0 +1,151 @@
+
+class CMySql(curdir=null)
+{
+	self.__lib=null;
+	self.__db=null;
+	self.curdir=curdir;
+    self.__errmsg="";
+    self.__port=3306;
+
+    func get_curdir()
+	{
+        curdir=_fun("curdir");
+        if(curdir.size()==0)
+			curdir="./";
+		return curdir;
+	}
+    func get_filename()
+    {
+        filename="SilkMySQL64.dll";//win64
+		if(_fun("os_platform").find("WIN")<0)
+			filename="SilkMySQL";//linux
+		else if(_fun("os_platform").find("x64")<0)
+        {
+			filename="";
+            self.__errmsg="no win32 version for mysql.";
+        }
+		return filename;
+    }
+	
+    func SetPort(port)
+    {
+		self.__port=port;
+    }
+    func GetErrMsg()
+    {
+		return self.__errmsg;
+    }
+    
+	func Connect(host,user,password,dbname)
+	{
+		if(!self.curdir)
+			self.curdir=self.get_curdir();
+		self.__lib=_loadlib(self.curdir+self.get_filename());
+		self.__db=_calllib(self.__lib,"mysql_Open",host,user,password,dbname,self.__port);
+		if(self.__db)
+        {
+			if(_type(self.__db[0])=="HANDLE")
+				return true;
+			if(_type(self.__db[0])=="STRING")
+				self.__errmsg=self.__db[0];    
+        }
+		return false;	
+	}
+	func Close()
+	{
+		if(self.__lib)
+		{
+			if(self.__db)
+				_calllib(self.__lib,"mysql_Close",self.__db[0]);
+			_freelib(self.__lib);
+		}
+	}
+	func Exec(sql)
+	{
+        if(self.__lib && self.__db)
+        {	
+			result= _calllib(self.__lib,"mysql_Exec",self.__db[0],sql);
+            if(result)
+			{
+				self.__errmsg=result[0];    
+				return false;
+            }
+			return true;
+        }
+		return false;	
+	}
+    
+	func Query(sql)
+	{
+		result=null;
+        if(self.__lib && self.__db)	
+			result= _calllib(self.__lib,"mysql_Query",self.__db[0],sql);
+		return result;	
+	}
+	func Query_Free(result)
+	{
+		if(!result) 
+			return;
+        if(_len(result)==3)    
+			_calllib(self.__lib,"mysql_Query_Free",result[0]);
+	}
+	func RecordNum(result)
+	{
+		if(!result) 
+			return -1;
+        if(_len(result)==3)    
+			return result[1];
+        return -1;    
+	}
+	func FieldNum(result)
+	{
+		if(!result) 
+			return -1;
+        if(_len(result)==3)    
+			return result[2];
+        return -1;    
+	}
+	func GetRecord(result,recNo)
+	{
+		if(!self.__lib) 
+			return null;
+		if(_len(result)==3)
+		{
+			handle=result[0];
+			rec=_calllib(self.__lib,"mysql_Query_Record",handle,recNo);
+			return rec;
+		}
+        return null;
+	}
+	func GetByFieldNo(result,recNo,fieldNo)
+	{
+		if(!self.__lib) 
+			return null;
+		if(_len(result)==3)
+		{
+			handle=result[0];
+			rec=_calllib(self.__lib,"mysql_Query_Record",handle,recNo);
+			if(fieldNo>=0&&fieldNo<rec.size())
+				return rec[fieldNo];
+		}
+        return null;
+	}
+	func GetByFieldName(result,recNo,fieldName)
+	{
+		if(!self.__lib) 
+			return null;
+		if(_len(result)==3)
+		{
+			handle=result[0];
+			fields=_calllib(self.__lib,"mysql_Query_Record",handle,0);
+			for(i=0;i<fields.size();i++)
+				if(fieldName==fields[i])
+					break;
+					
+			rec=_calllib(self.__lib,"mysql_Query_Record",handle,recNo);
+			if(i>=0&&i<rec.size())
+				return rec[i];
+		}
+        return null;
+	}	
+}

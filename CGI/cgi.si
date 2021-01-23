@@ -1,0 +1,45 @@
+func generate_dict(data)
+{
+	if(data.size()==0)
+		return null;
+	data_dict={};
+	items=data.split("&");
+	for(i=0;i<items.size();i++)
+	{
+		temp=items[i].split("=");
+		if(temp.size()>1)
+			data_dict[temp[0]]=temp[1];
+	}
+	return data_dict;
+}
+func get_envs()
+{
+    env={};
+	env["REQUEST_METHOD"]=_fun("getenv","REQUEST_METHOD");
+	env["CONTENT_LENGTH"]=_fun("getenv","CONTENT_LENGTH");
+	env["QUERY_STRING"]=_fun("getenv","QUERY_STRING");
+	env["REQUEST_URI"]=_fun("getenv","REQUEST_URI");
+	env["REMOTE_ADDR"]=_fun("getenv","REMOTE_ADDR");
+	env["SERVER_ADDR"]=_fun("getenv","SERVER_ADDR");
+	env["DOCUMENT_ROOT"]=_fun("getenv","DOCUMENT_ROOT");
+	env["HTTP_HOST"]=_fun("getenv","HTTP_HOST");
+	env["HTTP_CONNECTION"]=_fun("getenv","HTTP_CONNECTION");
+	env["HTTP_USER_AGENT"]=_fun("getenv","HTTP_USER_AGENT");
+	
+    if(env["REQUEST_METHOD"]=="POST")
+    {
+		len= _int(env["CONTENT_LENGTH"]);
+        env["POST"]=_fun("getstdin",len);
+    }
+    
+    env["QUERY"]=generate_dict(env["QUERY_STRING"]);	
+    
+    return env;
+}
+func get_curdir()
+{
+	curdir=_fun("curdir");
+	if(curdir.size()==0)
+		curdir="./";
+	return curdir;
+}

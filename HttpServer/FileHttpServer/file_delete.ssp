@@ -1,0 +1,113 @@
+<?silk
+	#include "../../include/common.si"
+	#include "../../include/sqlite.si"
+    #include "functions.ssp"
+
+    func DeleteFile(filepath)
+    {
+		ret=_fun("fremove",filepath);
+        if(ret==0)
+			return true;
+        return false;    
+    }
+?>
+
+<?silk
+	args=_getargv()[0]; 
+	env=args["ENV"]; 
+	query=env["QUERY_DICT"];
+	globals=args["GLOBALS"]; 
+    curdir=globals["curdir"];
+	
+    cookies=GetCookies(args);
+    nRet=FindUser(args,cookies);
+    if(nRet==-1)
+    {
+		Redirect(args,"/login.ssp");
+        return "";
+    }
+    bAdmin=false;
+    if(nRet==1)
+    {
+		bAdmin=true;
+	}
+
+	DirName="";
+    file=query.find("file");
+    if(file)
+    {
+		file=_fun("url_unescape",file);
+		file=file.replace("+"," ");
+    
+		slash="\\";
+		if(_fun("os_platform").find("WIN")<0)
+			slash="/";
+		pos=file.rfind(slash);
+        DirName=file.substr(0,pos);
+        
+ 		strResult="No permission";
+        if(bAdmin)
+        {
+			VirtualName=file;
+			pos=file.find(slash);
+			if(pos>0)
+				VirtualName=file.substr(0,pos);
+			
+			globals=args["GLOBALS"];
+			vfolders=globals.find("virtual_folders");
+			folder=vfolders.find(VirtualName);
+			path=folder["path"];
+			pos=file.find(VirtualName);
+			filepath=file.replace(pos,VirtualName.size(),path);
+				
+			result=DeleteFile(filepath);
+			strResult="delete file error";
+			if(result)
+				strResult="delete file ok.";
+        }
+    }
+    
+?>
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="gb2312"> 
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>Silk File Server</title>
+	<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css">  
+	<script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+<body>
+
+<br><br>
+
+<div class="container-fluid">
+
+<div class="panel panel-primary">
+	<div class="panel-heading">
+		<h3 class="panel-title" align="center">Delete</h3>
+	</div>
+	<div class="panel-body">
+	
+	<?silk
+		response.write("<div class=\"panel panel-default\"> <div class=\"panel-body\">");
+		buff=sprintf("<a href='/getlist.ssp?dir=%s'><strong>Back</strong></a>",DirName);
+		response.write(buff);
+        response.write("</div></div>");
+    ?>
+    
+    <div id="myAlert" class="alert alert-warning" align="center">
+		<a href="#" class="close" data-dismiss="alert">&times;</a>
+		<strong><?silk response.write(strResult); ?></strong>
+	</div>
+
+    
+	</div>
+</div>
+</div>
+
+
+</body>
+</html>

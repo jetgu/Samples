@@ -1,0 +1,127 @@
+
+<?silk
+	#include "../../include/file.si"
+    #include "functions.ssp"
+    
+	args=_getargv()[0]; 
+	env=args["ENV"]; 
+	post=args["POST"]; 
+	globals=args["GLOBALS"]; 
+
+    cookies=GetCookies(args);
+    nRet=FindUser(args,cookies);
+    if(nRet==-1)
+    {
+		Redirect(args,"/login.ssp");
+        return "";
+    }
+   
+	//print(env["HTTP_CONTENT-LENGTH"]);
+	//print(post);
+    
+    upload_path="";
+	query=env["QUERY_DICT"];
+	DirName=query.find("dir");
+	if(DirName)
+	{	
+		DirName=_fun("url_unescape",DirName);
+		DirName=DirName.replace("+"," ");
+
+		slash="\\";
+		if(_fun("os_platform").find("WIN")<0)
+			slash="/";
+		VirtualName=DirName;
+		pos=DirName.find(slash);
+		if(pos>0)
+			VirtualName=DirName.substr(0,pos);
+		
+		globals=args["GLOBALS"];
+		vfolders=globals.find("virtual_folders");
+		folder=vfolders.find(VirtualName);
+		path=folder["path"];
+        if(_int(folder["level"])==2)
+		{
+			pos=DirName.find(VirtualName);
+			upload_path=DirName.replace(pos,VirtualName.size(),path);
+		}
+        
+	}
+
+	strResult="No permission!";
+    if(upload_path)
+    {
+		strResult="Upload error!";
+		strBoundaryTag="";
+		pos=post.find("\r\n");
+		if(pos>0)
+		{
+			strBoundaryTag="\r\n"+post.substr(0,pos);
+			//print(strBoundaryTag);	
+		}
+		strFilename="";	
+		pos2=post.find("filename=",pos);
+		if(pos2>0)
+		{
+			pos3=post.find("\r\n",pos2);
+			strFilename=post.substr(pos2+9,pos3-pos2-9);
+			if(strFilename.substr(0,1)=="\"")
+				strFilename=strFilename.substr(1,strFilename.size()-2);
+			//print(strFilename);
+		}
+		posBegin=post.find("\r\n\r\n",pos2);
+		posEnd=post.find(strBoundaryTag,posBegin);
+		if(posBegin>0 && posEnd>0)
+		{
+			print("Upload OK");
+			strResult="Upload OK!";
+			posBegin+=4;
+			f=CFile();
+			f.Open(upload_path+"/"+strFilename,"wb");
+			print(strFilename);
+			f.Write(post.substr(posBegin,posEnd-posBegin));
+			f.Close();
+		}
+    }
+?>
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="gb2312"> 
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>Silk File Server</title>
+	<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css">  
+	<script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+<body>
+
+<br><br>
+
+<div class="container-fluid">
+
+<div class="panel panel-primary">
+	<div class="panel-heading">
+		<h3 class="panel-title" align="center">Upload file</h3>
+	</div>
+	<div class="panel-body">
+	
+	<?silk
+		response.write("<div class=\"panel panel-default\"> <div class=\"panel-body\">");
+		buff=sprintf("<a href='/getlist.ssp?dir=%s'><strong>Back</strong></a>",DirName);
+		response.write(buff);
+        response.write("</div></div>");
+    ?>
+    
+    <div id="myAlert" class="alert alert-success">
+	<a href="#" class="close" data-dismiss="alert">&times;</a>
+	<strong><?silk response.write(sprintf("%s",strResult)); ?></strong>
+	</div>
+    
+	</div>
+</div>
+</div>
+
+
+</body>
+</html>

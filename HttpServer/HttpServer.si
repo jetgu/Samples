@@ -1,0 +1,492 @@
+/*
+A multi-threads Http Server which can serve files from directories (multiple domains).
+It supports dynamic web pages which are developed in Silk(Silk Server Page, .ssp).
+一个多线程web服务器，可以同时建立多个网站（支持多域名多目录）
+并且支持动态网页（用Silk开发的服务器端脚本，.ssp）
+*/
+#include "../include/socket.si"
+#include "../include/file.si"
+
+class ArrayQueue()
+{
+	self.Data=[];
+	
+    func Empty()
+	{
+		return (self.Data.size() == 0);
+	}
+
+	func Push(data)
+	{
+		self.Data.append(data);
+	}
+    
+	func Pop()
+	{
+		if(self.Empty())
+		{
+			return null;
+		}
+		data = self.Data[0];
+		self.Data.erase(0);
+
+		return data;
+	}
+	 
+	func Destroy()
+	{
+		self.Data.clear();
+	}        
+}
+
+class CLogFile()
+{
+	self=CFile();
+	self.lock=_createlock();
+    self.curday=0;
+    self.filename="";
+    self.mode="";
+    self.parent_Open=self.Open;
+
+	func Open(filename,mode)
+	{
+		self.curday=_fun("time_now")["day"];
+		self.filename=filename;
+        self.mode=mode;
+		return self.parent_Open(filename,mode);
+	}
+
+	func Log(str)
+	{
+		buff=sprintf("[%s] %s\r\n",_fun("time_now")["time_str"],str);
+		_lock(self.lock);
+		printf(buff);
+
+        if(self.filename.size()>0)
+        {
+			if(self.curday!=_fun("time_now")["day"])
+            {
+				self.Close();
+				self.Open(self.filename,self.mode);
+            }
+			self.Write(buff);
+        }
+		_unlock(self.lock);
+	}
+}
+class CHttpParser(server,client)
+{
+	self.server=server;
+	self.client=client;
+	self.method=null;
+	self.path=null;
+	self.length=0;
+	self.recv="";
+	self.data="";
+	self.env={};
+    self.stopRecv=false;
+	
+	func Log(str)
+	{
+		self.server.log.Log(str);
+	}
+
+   	func GenerateDict(data)
+	{
+		data_dict={};
+		items=data.split("&");
+		for(i=0;i<items.size();i++)
+		{
+			temp=items[i].split("=");
+			if(temp.size()>1)
+				data_dict[temp[0]]=temp[1];
+		}
+		return data_dict;
+	}
+    
+	func Parse(recv)
+	{
+		if(self.method==null)
+		{
+			self.recv=self.recv+recv;
+			if(self.recv.size()>self.server.MAX_RECV)
+				return true;
+			pos=self.recv.find("\r\n\r\n");
+			if(pos<0)
+				return false;
+			
+			self.data=self.data+self.recv.substr(pos+_len("\r\n\r\n"));
+			
+			arr_header=self.recv.split("\r\n");
+			if(arr_header.size()==0)
+				return false;
+			
+			query="";
+			uri="";
+			item=arr_header[0].split(" ");
+			if(item.size()>1)
+			{
+				self.method=item[0];
+				uri=item[1];
+				self.path=item[1];
+				item=uri.split("?");
+				if(item.size()>1)
+				{
+					self.path=item[0];
+					query=item[1];
+				}
+			}
+			
+			for(i=1;i<arr_header.size();i++)
+			{
+				item = arr_header[i].split(": ");
+				if(item.size()>1)
+				{
+					self.env["HTTP_"+item[0].upper()]=item[1];
+					if(item[0]=="Content-Length")
+						self.length=_int(item[1]);
+				}
+			}
+			
+			self.env["REQUEST_METHOD"]=self.method;
+			self.env["QUERY_STRING"]=query;
+			self.env["QUERY_DICT"]=self.GenerateDict(query);
+			self.env["REQUEST_URI"]=uri;
+			remote_addr=self.client.remote_addr();
+			if(remote_addr)
+				self.env["REMOTE_ADDR"]=remote_addr[0];
+			//print(self.env["HTTP_HOST"]);
+
+			if(self.method=="GET")
+				return true;
+			if(self.method=="POST")
+			{
+				if(self.length<=self.data.size())
+					return true;
+			}			
+		}
+		else
+		{
+			self.data=self.data+recv;
+			if(self.length<=self.data.size())
+				return true;
+			if(self.data.size()>self.server.MAX_RECV)
+            {
+				self.stopRecv=true;
+				return true;
+            }
+		}
+		
+		return false;
+	}
+
+	func SendHeader(code,filename,length,header=null)
+    {
+		buff=sprintf("HTTP/1.0 %d OK\r\nContent-Length: %d\r\n",code,length);
+        bType=false;
+        if(header)
+        {
+			if(header.find("Content-Type"))
+				bType=true;
+			for(i=header.begin();!header.end(i);header.next(i))
+				buff+=sprintf("%s: %s\r\n",header.get(i)[0],header.get(i)[1]);
+        }
+		if(!bType)
+        {
+			pos=filename.rfind(".");
+			ext=filename.substr(pos);
+			type="application/octet-stream";
+			temp=self.server.mime.find(ext.lower());
+			if(temp)
+				type=temp;
+			buff+=sprintf("Content-Type: %s\r\n",type);
+        }
+		buff+=sprintf("Server: %s\r\n",self.server.name);
+		buff+="\r\n";
+
+		return self.client.send(buff);
+    }
+    
+	func SendFile(filename)
+	{
+		size=4096;
+		file=CFile();
+		if(file.Open(filename,"rb"))
+		{
+			s=file.Read(size);
+			if(s!=null)
+			{
+                ret=self.SendHeader(200,filename,file.size);
+				if(ret<0)
+				{
+					file.Close();
+					return;
+				}
+                ret=self.client.send(s);
+				if(ret<0)
+				{
+					file.Close();
+					return;
+				}
+				
+				//continue reading and sending
+				pos=_len(s);
+				while(pos<file.size)
+				{
+					file.Seek(pos);
+					s=file.Read(size);
+					ret=self.client.send(s);	
+					if(ret<0)
+						break;
+					pos+=_len(s);
+				}
+			}
+			file.Close();
+
+		}
+		else
+		{
+			str="Not found";
+            self.SendHeader(404,".html",str.size());
+			self.client.send(str);	
+		}
+	}
+	
+	func SendPage(filename,args)
+	{
+		html=_fun("runfile_tag",filename,"",args);
+		if(args.find("CLOSE"))
+			return;
+
+		if(html==null)
+        {
+			str="Not found";
+            self.SendHeader(404,".html",str.size());
+			self.client.send(str);	
+            return;
+        }
+        
+		self.SendHeader(args["CODE"],args["FILE"],html.size(),args["HEADER"]);
+		self.client.send(html);	
+	}
+
+	func CreateArgs()
+    {
+		args={};
+		args["ENV"]=self.env;
+		args["GLOBALS"]=self.server.globals;
+		args["SOCKET"]=self.client;
+		args["HEADER"]={};
+		args["CODE"]=200;
+		args["FILE"]=".html";
+        
+        return args;
+    }
+
+	func reply()
+	{
+		if(self.stopRecv)
+        {
+			str="Request Entity Too Large";
+            self.SendHeader(413,".html",str.size());
+			self.client.send(str);
+            self.client.close();	
+            return;
+        }
+        
+		file=self.path;
+		if(file=="/")
+		{
+			default_page=self.server.default_pages.find(self.env["HTTP_HOST"]);
+			if(!default_page)
+				default_page=self.server.default_page;
+			file=file+default_page;
+		}
+		if(file)
+		{		
+			default_dir=self.server.default_dirs.find(self.env["HTTP_HOST"]);
+			if(!default_dir)
+				default_dir=self.server.default_dir;
+			if(_fun("os_platform").find("WIN")==0)
+				file=file.replace("/","\\");		
+			filename=default_dir+file;
+            buff=sprintf("%s %s (%s)",self.method,file,self.env["REMOTE_ADDR"]);
+			self.Log(buff);
+		}
+
+		if(self.method=="GET")
+		{
+			len=_len(file);
+			if(file.substr(len-3)==".si" || file.substr(len-4)==".ssp")
+			{
+				args=self.CreateArgs();
+				self.SendPage(filename,args);
+			}			
+			else
+			{
+				self.SendFile(filename);
+			}
+	
+		}
+		else if(self.method=="POST")
+		{
+			len=_len(file);
+			if(file.substr(len-3)==".si" || file.substr(len-4)==".ssp")
+			{
+				args=self.CreateArgs();
+				args["POST"]=self.data;
+				self.SendPage(filename,args);
+			}			
+			else
+			{
+				self.SendFile(filename);
+			}
+	
+		}
+			
+		self.client.close();
+	}
+}
+
+func process_client(server,client)
+{
+	parser = CHttpParser(server,client);
+	
+    client.timeout(30);
+    buff_size=4096;
+	recv=client.recv(buff_size);
+	while(recv.size()>0)
+	{
+		if(parser.Parse(recv))
+			break;
+		
+		recv=client.recv(buff_size);
+	}    
+	parser.reply();	
+}
+func thread_process(server,lock,queue)
+{
+	if(!lock) return;
+	if(!queue) return;
+    
+	while(1)
+    {
+		_lock(lock);
+        client=queue.Pop();
+        _unlock(lock);
+        
+        if(client)
+			process_client(server,client);
+		
+        _fun("time_sleep",10);
+    }
+}
+
+class CHttpServer(port)
+{
+	self.MAX_RECV=1024*1024;//max upload data is 1MB
+	self.port=port;
+	self.bRun=false;
+	self.default_dir="";
+	self.default_page="";
+	self.default_dirs={};
+	self.default_pages={};
+    self.globals={};
+	self.bThreadPool=false;
+	
+	self.log=CLogFile();
+
+	self.name="Silk Http Server/1.0";
+	self.mime={};
+	self.mime[".html"]="text/html";
+	self.mime[".htm"]="text/html";
+	self.mime[".css"]="text/css";
+	self.mime[".txt"]="text/plain";
+	self.mime[".js"]="application/x-javascript";
+	self.mime[".ico"]="image/x-icon";
+	self.mime[".gif"]="image/gif";
+	self.mime[".jpg"]="image/jpeg";
+	self.mime[".jpeg"]="image/jpeg";
+	self.mime[".png"]="image/png";
+	self.mime[".exe"]="application/octet-stream";
+	self.mime[".zip"]="application/x-zip-compressed";
+	self.mime[".rar"]="application/x-rar-compressed";
+
+	func get_curdir()
+	{
+        curdir=_fun("curdir");
+        if(curdir.size()==0)
+			curdir="./";
+		return curdir;
+	}
+	func add_domain_default(domain,dir,page)
+	{
+		self.default_dirs[domain]=dir;
+		self.default_pages[domain]=page;
+	}
+	func set_defaultdir(dir,page)
+	{
+		//dir=self.get_curdir()+dir;
+		self.default_dir=dir;
+		self.default_page=page;
+	}
+	func set_logfile(file)
+	{
+		self.log.Open(file,"w");
+	}
+	func thread_pool(count)
+	{
+		if(count<=0)
+			return;
+		self.bThreadPool=true;
+		self.threadLock=_createlock();
+		self.threadQueue=ArrayQueue();
+		for(i=0;i<count;i++)
+			_createthread(thread_process,self,self.threadLock,self.threadQueue);
+	}
+	func add_client(client)
+	{
+		_lock(self.threadLock);
+		self.threadQueue.Push(client);
+		_unlock(self.threadLock);
+	}
+    
+	func run()
+	{
+		//self.thread_pool(4);
+    
+		self.log.Log(sprintf("http server is starting to run on port %d",self.port));
+		server_sock=CSocket();
+		if(!server_sock.listen(self.port))
+		{
+			self.log.Log(sprintf("error running on port %d",self.port));
+			return;
+		}
+			
+		self.bRun=true;
+		while(self.bRun)
+		{
+			client_sock= server_sock.accept();
+            if(self.bThreadPool)
+				self.add_client(client_sock);
+            else
+				_createthread(process_client,self,client_sock);
+		}
+		server_sock.close();
+	}
+	func stop()
+	{
+		self.bRun=false;
+	}
+}
+
+main()
+{
+	server=CHttpServer(80);
+ 	//server.set_logfile("C:\\testpages\\log\\log.txt");//here we set the path of log file
+	server.set_defaultdir("C:\\testpages","index.html");//here we set the directory of webpages and the index page
+	//server.add_domain_default("testdomain.com","C:\\testdomain\\public_html","index.htm");//here we can set domain
+	//server.add_domain_default("testdomain2.com","C:\\testdomain2\\public_html","index.htm");
+	server.run();
+	
+}

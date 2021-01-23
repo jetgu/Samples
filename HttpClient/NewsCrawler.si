@@ -1,0 +1,129 @@
+//这是一个利用HttpClient和正则表达式爬取网易新闻的爬虫程序
+
+#include "./HttpClient.si"
+
+_pageID=0;
+
+func clear_screen()
+{
+	if(_fun("os_platform").find("WIN")<0)
+		_fun("system","clear"); //linux
+    else
+		_fun("system","cls"); //win
+}
+
+func news_crawler()
+{
+	global _pageID;
+    
+	client=CHttpClient();
+
+	clear_screen(); 
+	NUM=3;
+    page=_pageID*3;
+	list=[];
+	for(p=page;p<page+NUM;p++)
+    {
+		url=sprintf("http://3g.163.com/touch/reconstruct/article/list/BBM54PGAwangning/%d-20.html",p*20);
+		ret=client.get(url);
+		if(!ret)
+		{
+			print("No news.");
+            _input();
+            _pageID=0;
+            news_crawler();
+			return;
+		}
+
+		html=client.utf8(ret);
+		pos=html.find("artiList(");
+		if(pos>=0)
+			html=html.substr(9,html.size()-9-1);
+        else
+        {
+			_pageID--;
+			print("【没有内容，按任意键回车返回上一页】");
+            _input();
+            news_crawler();
+            return;	
+        }
+            
+			
+		json=CJson();
+		dict=json.Parse(html);
+		//print(dict);
+		temp=dict["BBM54PGAwangning"];
+		for(i=0;i<temp.size();i++)
+		{
+			if(temp[i]["url"].find("http")<0) 
+				continue;
+			list.append(temp[i]);
+		}
+    }
+    
+    while(true)
+    {
+		for(i=0;i<list.size();i++)
+		{
+			print(i+1,list[i]["title"]);
+		}
+		print("\n【请输入新闻编号按回车查看详细内容】");
+		print("【按N键回车查看下一页，按P键回车查看上一页】");
+        key=_input().rtrim();
+        if(key.upper()=="N")
+        {
+			_pageID++;
+            news_crawler();
+            return;	
+        }
+        if(key.upper()=="P")
+        {
+			_pageID--;
+            if(_pageID<0)
+				_pageID=0;
+            news_crawler();
+            return;	
+        }
+        
+        n=_int(key)-1;
+        if(n>=0 && n<list.size())
+        {
+			url=list[n]["url"].replace("https://","http://");
+			ret=client.get(url);
+			if(ret)
+			{
+				html=client.utf8(ret);
+				html=html.replace("\n","<br/>");
+                //print(html);
+				pattern="<article (.*?)>(.*?)</article>";
+				r=_fun("regex_searchall",html,pattern);
+				if(r)
+				{
+					text="";
+					for(i=0;i<r.size();i++)
+						text+=r[i];
+					pattern="<p>(.*?)</p>";
+					r=_fun("regex_searchall",text,pattern);
+					text="";
+					for(i=0;i<r.size();i++)
+						text+=r[i];
+                    text=text.replace("<p>","\n");    
+                    text=text.replace("</p>","\n");    
+                    text=text.replace("<br/>","\n");  
+                    clear_screen();  
+					print(text);			
+				}
+                
+			}
+            print("【按回车返回新闻目录】");
+            _input();
+            clear_screen();  
+		
+        }
+    }
+}
+
+main()
+{
+	news_crawler();
+}

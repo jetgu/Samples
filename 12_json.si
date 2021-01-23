@@ -1,0 +1,49 @@
+//a sample which illustrates how to use json in Silk
+//如何使用json的例子
+#include "include/json.si"
+
+func json_parse()
+{
+	//if SilkCommonLib64.dll is not in current directory, you need to pass the path of dll here
+	//json=CJson(dllPath);
+	json=CJson();
+	jsonStr="{ \"title\":\"Shanghai\" , \"url\":\"www.silklang.org\" , \"test\":200.66,\"arr\":[11,22,33],\"obj\":{\"t1\":9,\"t2\":\"good\"}}";
+    	
+    obj=json.Parse(jsonStr);
+    for(i=obj.begin();!obj.end(i);obj.next(i))
+    {
+		kv=obj.get(i);
+		print(kv[0],"=",kv[1]);
+    }
+    printf("\n");
+    
+    json.Free();
+    
+}
+func json_create()
+{
+    obj={};
+    obj["abc"]=123;
+    obj["test"]="morning";
+    obj["xx"]=[1,"Mi",0.99];
+    obj2={};
+    obj2["ddd"]=989;
+    obj2["ggg"]="after";
+    obj2["array"]=[];
+    obj["new|bbs"]=obj2;
+    
+	json=CJson();
+    jsonStr=json.CreateJson(obj);
+    print(jsonStr);
+    
+    //json.WriteFile("test.json",jsonStr);
+    
+    json.Free();
+    
+}
+
+main()
+{
+	json_parse();
+    json_create();
+}

@@ -1,0 +1,136 @@
+<?silk
+	#include "../../include/common.si"
+	#include "../../include/sqlite.si"
+    #include "functions.ssp"
+
+    func AddFolder(args,curdir,name,path,description,permisson)
+    {
+		lock=args["GLOBALS"]["lock"];
+		_lock(lock);
+    
+        result=null;
+		db=CSqlite(curdir);
+		if(db.Open(curdir+"FileHttpServer/admin.db"))
+		{
+			time=_fun("time_now")["time_str"];
+			sql=sprintf("INSERT INTO folder (name,path,description,createtime,level,reserve) VALUES ('%s','%s','%s','%s',%s,'%s')",name,path,description,time,permisson,"");
+            result=db.Exec(sql);
+		}
+		db.Close();
+
+		_unlock(lock);
+        
+        return result;
+    }
+    func UpdateFolder(args,curdir,name,path,description,permission)
+    {
+		lock=args["GLOBALS"]["lock"];
+		_lock(lock);
+        
+        result=null;
+		db=CSqlite(curdir);
+		if(db.Open(curdir+"FileHttpServer/admin.db"))
+		{
+			name=EscapeStr(name);
+			sql=sprintf("Update folder set path='%s',description='%s',level=%s where name='%s'",path,description,permission,name);
+            //print(sql);	
+            result=db.Exec(sql);
+		}
+		db.Close();
+        
+		_unlock(lock);
+        
+        return result;
+    }
+?>
+
+<?silk
+	args=_getargv()[0]; 
+	env=args["ENV"]; 
+	post=args["POST"]; 
+	globals=args["GLOBALS"]; 
+    curdir=globals["curdir"];
+	
+    post=GenerateDict(post);
+    update=post.find("update");
+    name=post.find("foldername");
+    path=post.find("path");
+    description=post.find("description");
+    permission=post.find("permission");
+
+    cookies=GetCookies(args);
+	session=FindSession(args,cookies);
+    if(!session)
+    {
+		Redirect(args,"/login.ssp");
+        return "";
+    }
+    
+    result=null;
+    strResult="";
+    if(update)
+    {
+		result=UpdateFolder(args,curdir,name,path,description,permission);
+		strResult="Update folder error";
+		if(result)
+			strResult="Update folder ok.";
+    }
+    else
+    {
+		result=AddFolder(args,curdir,name,path,description,permission);
+		strResult="Add folder error";
+		if(result)
+			strResult="Add folder ok.";
+    }
+
+	if(result)
+	{
+		vfolders={};
+		LoadFolders(curdir,vfolders);
+		SaveFolders(args,vfolders);
+   }
+   
+?>
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="gb2312"> 
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>Silk File Server</title>
+	<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css">  
+	<script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+<body>
+
+<br><br>
+
+<div class="container-fluid">
+
+<div class="panel panel-primary">
+	<div class="panel-heading">
+		<h3 class="panel-title" align="center">Silk File Server</h3>
+	</div>
+	<div class="panel-body">
+	
+    
+    <div id="myAlert" class="alert alert-warning" align="center">
+		<a href="#" class="close" data-dismiss="alert">&times;</a>
+		<strong><?silk response.write(strResult); ?></strong>
+	</div>
+	<div class="panel panel-default" align="center"> 
+		<div class="panel-body">
+		<a href='/admin.ssp'><strong>Admin</strong></a>
+		</div>
+	</div>
+
+
+    
+	</div>
+</div>
+</div>
+
+
+</body>
+</html>

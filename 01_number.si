@@ -1,0 +1,25 @@
+
+main()
+{
+    printf("请输入一个整数并按回车键: ");
+    number=_int(_input());  
+    //显示输入的整数
+    printf("你输入的整数是: %d\n", number);
+
+	//带小数的浮点数
+	d = 3.14159;
+	printf("d 的值为 %f\n", d);
+	printf("d 的值为 %.3f\n", d);//3位小数，四舍五入
+
+    //两个数字相加
+    num1=10;
+    num2=29;
+    sum = num1 + num2;
+    //输出结果
+    printf("%d + %d = %d\n", num1, num2, sum);
+     
+    //两个数字相乘
+    mul = num1 * num2;
+    //输出结果
+    printf("%d x %d = %d\n", num1, num2, mul);
+}

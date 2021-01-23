@@ -1,0 +1,41 @@
+#include "../include/mysql.si"
+
+//currently we can only test on 64 bit Windows, because we only have 64 bit dlls.
+//if you get error like "Dll is missing...", 
+//please download Visual C++ Redistributable 2015 at https://www.microsoft.com/zh-cn/download/details.aspx?id=48145 and install it.
+func mysqlTest()
+{
+	//if SilkMySQL64.dll is not in current directory, you need to pass the path of dll here
+	//db=CMySql(mysqlDllPath);
+	db=CMySql();
+    //replace with your MySQL server ip/userid/pwd/db here
+    if(db.Connect("127.0.0.1","root","myroot","test_db"))
+    {
+		//sql=sprintf("select * from person_like where name = 'wang'");
+		sql=sprintf("select * from person_like");
+		res=db.Query(sql);
+        if(res)
+        {
+			nCount=db.RecordNum(res);
+            nField=db.FieldNum(res);
+            for(i=0;i<nCount;i++)
+            {
+				str="";
+				for(j=0;j<nField;j++)
+				{
+					value=db.GetByFieldNo(res,i,j);
+					str+=value+", ";
+				}
+                print(str);
+            }
+            db.Query_Free(res);
+        }
+        db.Close();	
+    }
+    
+}
+
+main()
+{
+	mysqlTest();
+}

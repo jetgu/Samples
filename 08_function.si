@@ -1,0 +1,26 @@
+
+func test(x)
+{
+    printf("%d\n",x);
+} 
+func test2(f)
+{
+    f(200);
+} 
+
+func test3(x,y=100)
+{
+    z=x+y;
+    printf("%d+%d=%d\n",x,y,z);
+}
+ 
+main()
+{
+    f=test;//函数名赋值给变量f
+    print(_type(f));
+    f(100);//调用函数，相当于调用了test(100);
+    test2(f);//把函数变量作为参数传递
+   
+    test3(1,2);//传入2个参数
+    test3(1);//传入第一个参数，后面一个省略，会使用缺省参数
+}

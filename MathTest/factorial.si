@@ -1,0 +1,42 @@
+//一个正整数的阶乘是所有小于及等于该数的正整数的积，并且0的阶乘为1。
+
+//递归调用
+func multiplyNumbers(n)
+{
+    if (n >= 1)
+        return n*multiplyNumbers(n-1);
+    else
+        return 1;
+}
+func recursion_way()
+{
+    printf("输入一个整数: \n");
+    n=_int(_input());
+    
+	factorial = multiplyNumbers(n);
+    printf("%d! = %d\n", n, factorial);
+}
+func normal_way()
+{
+    factorial = 1;
+ 
+    printf("输入一个整数: \n");
+    n=_int(_input());
+ 
+    // 如果输入是负数，显示错误
+    if (n < 0)
+        printf("Error! 负数没有阶乘");
+    else
+    {
+        for(i=1; i<=n; i++)
+        {
+            factorial = factorial*i; 
+        }
+        printf("%d! = %d\n", n, factorial);
+    }        
+}
+main()
+{
+	//normal_way();
+    recursion_way();
+}

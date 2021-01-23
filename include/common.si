@@ -1,0 +1,110 @@
+
+class CCommon(curdir=null)
+{
+	self.__lib=null;
+	self.curdir=curdir;
+	
+    func get_curdir()
+	{
+        curdir=_fun("curdir");
+        if(curdir.size()==0)
+			curdir="./";
+		return curdir;
+	}
+    func get_filename()
+    {
+        filename="SilkCommonLib64.dll";//win64
+		if(_fun("os_platform").find("WIN")<0)
+			filename="SilkCommonLib";//linux
+		else if(_fun("os_platform").find("x64")<0)
+			filename="SilkCommonLib.dll";//win32
+		return filename;
+    }
+
+	func __Load()
+	{
+		if(!self.curdir)
+			self.curdir=self.get_curdir();
+
+		self.__lib=_loadlib(self.curdir+self.get_filename());
+ 		if(self.__lib)
+			return true;
+		return false;	
+	}
+	func Free()
+	{
+		if(self.__lib)
+			_freelib(self.__lib);
+	}
+    
+    func base64_encode(str)
+    {
+ 		if(self.__lib)
+		{   
+			ret=_calllib(self.__lib,"base64_encode",str);
+			if(ret)
+				return ret[0];
+		}        
+        return null;    
+    }
+    func base64_decode(str)
+    {
+ 		if(self.__lib)
+		{   
+			ret=_calllib(self.__lib,"base64_decode",str);
+			if(ret)
+				return ret[0];
+		}        
+        return null;    
+    }
+    func md5(str)
+    {
+ 		if(self.__lib)
+		{   
+			ret=_calllib(self.__lib,"md5",str);
+			if(ret)
+				return ret[0];
+		}        
+        return null;    
+    }
+    func utf8_to_ansi(str)
+    {
+ 		if(self.__lib)
+		{   
+			ret=_calllib(self.__lib,"utf8_to_ansi",str);
+			if(ret)
+				return ret[0];
+		}        
+        return null;    
+    }
+    func ansi_to_utf8(str)
+    {
+ 		if(self.__lib)
+		{   
+			ret=_calllib(self.__lib,"ansi_to_utf8",str);
+			if(ret)
+				return ret[0];
+		}        
+        return null;    
+    }
+    func dir_files(dir)
+    {
+ 		if(self.__lib)
+		{   
+			files=_calllib(self.__lib,"dir_files",dir);
+            return files;
+		}        
+        return null;    
+    }
+    func convert_time(time)
+    {
+ 		if(self.__lib)
+		{   
+			time=_calllib(self.__lib,"convert_time",time);
+            return time;
+		}        
+        return null;    
+    }
+    
+    self.__Load();
+}

@@ -1,0 +1,30 @@
+#include "include/file.si"
+
+func write_file(filename,text)
+{
+    file=CFile();
+    if(file.Open(filename,"wb"))
+    {
+		file.Write(text);
+    }
+    file.Close();
+}
+func read_file(filename)
+{
+	content="";
+    file=CFile();
+    if(file.Open(filename,"rb"))
+    {
+		content=file.ReadAll();
+    }
+    file.Close();
+    
+    return content;
+}
+
+main()
+{
+	write_file("d:\\text.txt","Hello\nIt's a nice day!");
+    text=read_file("d:\\text.txt");
+    print(text);
+}

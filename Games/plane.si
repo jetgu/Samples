@@ -1,0 +1,286 @@
+//A plane game
+/*
+飞机大战 v1.0
+根据C语言源代码改编成Silk语言
+原C语言参考地址：https://blog.csdn.net/weixin_44421292/article/details/105206808，感谢原作者。
+*/
+
+high = 20; //画布高
+width = 60; //画布宽
+border = -1; //边界
+blank = 0; //空白
+plane = 1; //飞机
+bullet = 2; //子弹
+enemy = 3; //敌机
+destroy = 4; //摧毁标记
+
+canvas=null; //游戏场景数组, 高和宽(high + 2,width + 2)
+temp=null;//临时数组
+ 
+pos_h=0;
+pos_w=0; //飞机位置
+enemynum=0; //敌机数量
+interval=0; //同个计次来模拟时间间隔
+itv_move=0; //敌机移动的时间间隔
+itv_new=0; //敌机刷新的时间间隔
+score=0; //分数
+IsOver=0; //判断游戏是否结束
+
+_lib=null;
+
+func get_curdir()
+{
+	return _fun("curdir");
+}
+func create_array(N,M)//创建N*M大小的二维数组
+{
+    /*array=[];
+	array.resize(N);
+	for(i=0;i<N;i++)
+	{
+		array[i]=[];
+		array[i].resize(M);
+	}
+    return array;*/
+    
+    array=[];
+    array.create2d(N,M);
+    return array;
+}
+func rand()
+{
+	return _fun("time_rand");
+}
+//=====>以下函数涉及Windows内部函数，通过调用C/C++语言编写的Dll实现
+func gotoxy(x, y){ 
+	if(_lib)
+		_calllib(_lib,"set_console_pos",x,y);
+}
+func HideCursor(){ //隐藏光标函数
+	if(_lib)
+		_calllib(_lib,"hide_console_cursor");
+}
+func GetKeyState(key)
+{
+	if(_lib)
+    {
+		ret=_calllib(_lib,"get_key_state",key);
+        if(ret)
+			return ret[0];
+    }
+	return 1;
+}
+func _kbhit()
+{
+	if(_lib)
+    {
+		ret=_calllib(_lib,"is_keyboard_hit");
+        if(ret)
+			return ret[0];
+    }
+	return 0;
+}
+//<=====
+
+func Startup(){ //游戏数值初始化
+	global canvas,IsOver,score,pos_h,pos_w,enemynum,interval,itv_move,itv_new;
+
+	IsOver = 1;
+	score = 0; //初始化分数
+    canvas=create_array(high + 2,width + 2);
+	for (i = 0; i<high + 2; i++){ //初始化画布
+		for (j = 0; j<width + 2; j++){
+			if (i == 0 || i == high + 1 ||
+				j == 0 || j == width + 1){
+				canvas[i][j] = border;
+			}
+			else canvas[i][j] = blank;
+		}
+	}
+    
+	pos_h = high / 2; //初始化飞机竖直坐标
+	pos_w = width / 2; //初始化飞机水平坐标
+	canvas[pos_h][pos_w] = plane; //初始化飞机位置
+	enemynum = 3; //敌机数量
+	
+	interval = 4; //初始化时间间隔计数
+	itv_move = 5; //初始化敌机移动时间间隔
+	itv_new = 40; //初始化敌机刷新时间间隔
+}
+func Show(){ //游戏界面输出
+	HideCursor(); //隐藏光标
+	gotoxy(2, 2); //回调光标、刷新画面
+	for (i = 0; i<high + 2; i++){
+		for (j = 0; j<width + 2; j++){
+			if (canvas[i][j] == plane){ //当前位置为飞机位置
+				printf("*");
+			}
+			else if (canvas[i][j] == bullet){ //当前位置为子弹位置
+				printf("|");
+			}
+			else if (canvas[i][j] == enemy){ //当前位置为敌机位置
+				printf("@");
+			}
+			else if (canvas[i][j] == border){ //当前位置为边界
+				printf("#");
+			}
+			else if (canvas[i][j] == blank){ //当前位置无物，且在边界内
+				printf(" ");
+			}
+			else if (canvas[i][j] == destroy){ //当前位置无物，且在边界内
+				printf("x");
+			}
+		}
+		printf("\n");
+	}
+	printf("\n得分：%d", score);
+}
+func UpdateInput(){ //与输入无关的游戏状态更新
+	global IsOver,pos_h,pos_w;
+
+	//key_W = GetKeyState("W"); //监测 W 键是否按下
+	//key_S = GetKeyState("S"); //监测 S 键是否按下
+	//key_A = GetKeyState("A"); //监测 A 键是否按下
+	//key_D = GetKeyState("D"); //监测 D 键是否按下
+
+	key_W = GetKeyState(sprintf("%c",38)); //监测 UP 键是否按下
+	key_S = GetKeyState(sprintf("%c",40)); //监测 DOWN 键是否按下
+	key_A = GetKeyState(sprintf("%c",37)); //监测 LEFT 键是否按下
+	key_D = GetKeyState(sprintf("%c",39)); //监测 RIGHT 键是否按下
+ 
+    
+	key_attack = GetKeyState(" "); //监测 空格 键是否按下
+	if (_kbhit()){ //当有键按下时
+		if (key_W<0){ //当按下 W 键，上移
+			if (pos_h>1){
+				canvas[pos_h][pos_w] = blank;
+				if (canvas[pos_h - 1][pos_w] == enemy){ //下个位置是敌机，撞毁
+					canvas[pos_h - 1][pos_w] = destroy;
+					IsOver = 0;
+				}
+				else 
+                {
+					pos_h--;
+					canvas[pos_h][pos_w] = plane;
+                }
+			}
+		}
+		if (key_S<0){ //当按下 S 键，下移
+			if (pos_h<high){
+				canvas[pos_h][pos_w] = blank;
+				if (canvas[pos_h + 1][pos_w] == enemy){ //下个位置是敌机，撞毁
+					canvas[pos_h + 1][pos_w] = destroy;
+					IsOver = 0;
+				}
+				else 
+                {	
+					pos_h++;
+					canvas[pos_h][pos_w] = plane;
+				}
+            }
+		}
+		if (key_A<0){ //当按下 A 键，左移
+			if (pos_w>1){
+				canvas[pos_h][pos_w] = blank;
+				if (canvas[pos_h][pos_w - 1] == enemy){ //下个位置是敌机，撞毁
+					canvas[pos_h][pos_w - 1] = destroy;
+					IsOver = 0;
+				}
+				else 
+                {	pos_w--;
+					canvas[pos_h][pos_w] = plane;
+                }
+			}
+		}
+		if (key_D<0){ //当按下 D 键，右移
+			if (pos_w<width){
+				canvas[pos_h][pos_w] = blank;
+				if (canvas[pos_h][pos_w + 1] == enemy){ //下个位置是敌机，撞毁
+					canvas[pos_h][pos_w + 1] = destroy;
+					IsOver = 0;
+				}
+				else 
+                {
+					pos_w++;
+					canvas[pos_h][pos_w] = plane;
+                }
+			}
+		}
+		if (key_attack<0){ //当按下空格键，发射子弹
+			if (pos_h != 1)canvas[pos_h - 1][pos_w] = bullet;
+		}
+	}
+}
+func UpdateNormal(){ //因输入导致的游戏状态更新
+	global temp;
+	global IsOver,score,pos_h,pos_w,interval;
+
+	if(!temp)
+		temp=create_array(high + 2,width + 2); //用来判断原位置的临时数组
+	for (i = 1; i <= high; i++){
+		for (j = 1; j <= width; j++){
+			temp[i][j] = canvas[i][j];
+		}
+	}
+	for (i = 1; i <= high; i++){ //遍历临时数组，修改画布
+		for (j = 1; j <= width; j++){
+			if (temp[i][j] == enemy && interval%itv_move == 0){ //当前位置为敌机
+				canvas[i][j] = blank;
+				if (temp[i + 1][j] == bullet){ //下面为子弹，敌机被击中
+					canvas[i + 1][j] = blank;
+					score++;
+					printf("\a"); //击中音效
+				}
+				else if (i<high){
+					canvas[i + 1][j] = enemy;
+				}
+				if (i + 1 == pos_h&&j == pos_w){ //下面为飞机，玩家飞机被撞毁
+					canvas[i + 1][j] = destroy;
+					IsOver = 0;
+				}
+			}
+			if (temp[i][j] == bullet){ //当前位置为子弹
+				canvas[i][j] = blank;
+				if (temp[i - 1][j] == enemy){ //下个位置是敌机，敌机被击毁
+					canvas[i - 1][j] = blank;
+					score++;
+					printf("\a");
+				}
+				else if (i>1){
+					canvas[i - 1][j] = bullet;
+				}
+			}
+		}
+	}
+	if (interval%itv_new == 0) //刚好到时间间隔
+		for (i = 0; i<enemynum; i++){ //新增敌机群
+			canvas[rand() % 2 + 1][rand() % width + 1] = enemy;
+		}
+	if (interval <= 100){ //时间间隔计次
+		interval++;
+	}
+	else{ //时间间隔计次清零
+		interval = 0;
+	}
+}
+
+
+main()
+{
+	filename=get_curdir()+"SilkCommonLib64.dll";
+	if(_fun("os_platform").find("x64")<0)
+		filename=get_curdir()+"SilkCommonLib.dll";//win32
+	_lib=_loadlib(filename);
+
+	Startup(); //初始化
+	while (IsOver){ //游戏循环
+		UpdateInput();
+		UpdateNormal();
+
+		Show();
+	}
+	printf("\t\tgame over!\n");
+	_input();//pause
+    
+    _freelib(_lib);
+}

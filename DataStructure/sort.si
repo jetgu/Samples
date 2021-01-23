@@ -1,0 +1,185 @@
+//A demo for most kinds of sort algorithm written in Silk
+//用Silk语言演示各种排序算法
+
+//冒泡排序
+func bubble_sort(arr,len) {
+    for (i = 0; i < len - 1; i++)
+        for (j = 0; j < len - 1 - i; j++)
+            if (arr[j] > arr[j + 1]) {
+                temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            }
+}
+
+func swap(arr,a,b) //交换两数
+{
+    temp = arr[a];
+    arr[a] = arr[b];
+    arr[b] = temp;
+}
+//选择排序
+func selection_sort(arr,len) 
+{
+    for (i = 0 ; i < len - 1 ; i++) 
+    {
+        min = i;
+        for (j = i + 1; j < len; j++)    
+            if (arr[j] < arr[min])    
+                min = j;    
+           swap(arr,min,i);    
+    }
+}
+//插入排序
+func insertion_sort(arr,len){
+    for (i=1;i<len;i++){
+            temp = arr[i];
+            for (j=i;j>0 && arr[j-1]>temp;j--)
+                    arr[j] = arr[j-1];
+            arr[j] = temp;
+    }
+}
+func min(x, y) {
+	if(x<y)
+		return x;
+    return y;
+}
+//归并排序
+func merge_sort(arr, len) {
+    a = arr;
+    b = [];
+    b.resize(len);
+    for (seg = 1; seg < len; seg += seg) {
+        for (start = 0; start < len; start += seg + seg) {
+            low = start; mid = min(start + seg, len); high = min(start + seg + seg, len);
+            k = low;
+            start1 = low; end1 = mid;
+            start2 = mid; end2 = high;
+            while (start1 < end1 && start2 < end2)
+            {
+				if(a[start1] < a[start2])
+                {
+					b[k]=a[start1];
+                    k++;
+                    start1++;
+                }
+                else
+                {
+					b[k]=a[start2];
+                    k++;
+                    start2++;
+                }
+            }
+            while (start1 < end1)
+            {
+                b[k] = a[start1];
+                k++;
+                start1++;
+            }
+            while (start2 < end2)
+            {
+                b[k] = a[start2];
+                k++;
+                start2++;
+            }
+        }
+        temp = a;
+        a = b;
+        b = temp;
+    }
+    if(a!=arr)
+    {
+		for (i = 0; i < len; i++)
+			arr[i] = a[i];
+    }
+}
+
+
+class new_Range(s, e) {
+    self.start = s;
+    self.end = e;
+}
+
+//快速排序（迭代法）
+func quick_sort(arr, len) {
+    if (len <= 0)
+        return; 
+
+	r=[];
+    r.resize(len);
+    p = 0;
+    r[p] = new_Range(0, len - 1);
+    p++;
+    while (p) {
+		p--;
+        range = r[p];
+        if (range.start >= range.end)
+            continue;
+        mid = arr[(range.start + range.end) / 2]; 
+        left = range.start;
+        right = range.end;
+        first=true;
+        while(first || left <= right)
+        {
+			first=false;
+            while (arr[left] < mid) left++;   
+            while (arr[right] > mid) right--; 
+ 
+            if (left <= right)
+            {
+                swap(arr,left,right);
+                left++;right--;               
+            }
+        }
+ 
+        if (range.start < right) 
+        {
+			r[p] = new_Range(range.start, right);
+            p++;
+        }
+        if (range.end > left) 
+        {
+			r[p] = new_Range(left, range.end);
+            p++;
+        }
+    }
+}
+//快速排序（递归法）
+func quick_sort_recursive(arr, start, end) {
+    if (start >= end)
+        return;
+    mid = arr[end];
+    left = start;
+    right = end - 1;
+    while (left < right) {
+        while (arr[left] < mid && left < right)
+            left++;
+        while (arr[right] >= mid && left < right)
+            right--;
+        swap(arr,left,right);
+    }
+    if (arr[left] >= arr[end])
+        swap(arr,left, end);
+    else
+        left++;
+    if (left)
+        quick_sort_recursive(arr, start, left - 1);
+    quick_sort_recursive(arr, left + 1, end);
+}
+func quick_sort2(arr, len) {
+    quick_sort_recursive(arr, 0, len - 1);
+}
+
+main() {
+    arr = [ 22, 34, 3, 32, 82, 55, 89, 50, 37, 5, 64, 35, 9, 70, 234, 434, 2, 44 ];
+    len = _len(arr);
+    bubble_sort(arr, len);
+    selection_sort(arr,len);
+    insertion_sort(arr,len);
+    merge_sort(arr,len);
+    quick_sort(arr,len);
+    quick_sort2(arr,len);
+    //arr.sort();
+    for (i = 0; i < len; i++)
+        printf("%d ", arr[i]);
+}

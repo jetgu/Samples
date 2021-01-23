@@ -1,0 +1,44 @@
+//A demo for regex usage
+//演示如何使用正则表达式的例子
+
+main()
+{
+    str="Hello_2021";
+    pattern="(.{5})_(\\d{4})";//匹配5个任意单字符 + 下划线 + 4个数字
+ 	r=_fun("regex_match",str,pattern);
+    if(r)
+    {
+		print("match result:");
+        //将会输出如下匹配结果：
+        //完整匹配结果，Hello_2021
+        //第一组匹配的数据，Hello
+        //第二组匹配的数据，2021
+		for(i=0;i<r.size();i++)
+			print(r[i]);
+    }
+    str="123";
+    pattern="\\d";
+	r=_fun("regex_search",str,pattern,"icase");
+    if(r)
+    {
+		print("search result:");
+        //输出搜索结果
+		for(i=0;i<r.size();i++)
+			print(r[i]);
+    }
+    str="Goodbye 2020, hello 2021";
+    pattern="\\d{4}";//匹配四个数字
+	r=_fun("regex_searchall",str,pattern);
+    if(r)
+    {
+		print("searchall result:");
+        //输出搜索结果
+		for(i=0;i<r.size();i++)
+			print(r[i]);
+    }
+    str="Hello_2021";
+    pattern="(.{3})(.{2})_(\\d{4})";//匹配5个任意单字符 + 下划线 + 4个数字
+	r=_fun("regex_replace",str,pattern,"$1$3");//输出：Hel2021，将字符串替换为第一个和第三个表达式匹配的内容
+	print("replace result:",r);
+
+}

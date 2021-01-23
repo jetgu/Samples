@@ -1,0 +1,32 @@
+
+main()
+{
+	//直接定义字典
+	dict={"name":"Wang", "age":10, "score":85.5};
+    //遍历整个字典
+	for(i=dict.begin();!dict.end(i);dict.next(i))
+		print(dict.get(i)[0],"=",dict.get(i)[1]);
+
+	//字典内可以嵌套包含数组或字典
+	array=[100,98,99];
+	dict={"name":"Wang", "scores":array, "age":10, "info":{"city":"Shanghai","tel":69100000}};
+    print(dict);
+        
+    //定义空字典后添加键值对
+	dict={};
+    dict["name"]="Jack";
+    dict["phone"]=13800000001;
+    dict.insert("age",23);
+    dict["age"]=32;//更新
+    print(dict);
+    
+    //根据键查找字典中的键值
+	value=dict.find("age");
+	print(value);
+    
+    //根据键删除字典中的键值对
+	ret=dict.erase("age");
+    if(ret)
+		print("删除成功！");
+    print(dict);    
+}

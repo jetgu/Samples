@@ -1,0 +1,150 @@
+<?silk
+	#include "../../include/common.si"
+	#include "../../include/sqlite.si"
+    #include "functions.ssp"
+
+	func createDB(curdir)
+	{
+		//create DB if the data does not exist
+		db=CSqlite(curdir);
+		if(db.Open(curdir+"FileHttpServer/admin.db"))
+        {
+			sql="select * from user";
+			result=db.Query(sql);
+			if(!result)
+			{
+				//create user table
+				sql=sprintf("create table user (id integer PRIMARY KEY,name TEXT,password TEXT,email TEXT,phone TEXT,description TEXT,createtime TEXT,level integer,reserve TEXT)");
+				result=db.Exec(sql);
+				sql=sprintf("create UNIQUE INDEX user_name on user (name) ");
+				result=db.Exec(sql);
+
+				comm=CCommon(curdir);
+				username="admin";//demo	
+				password="test123";
+				password=comm.md5(password);
+				comm.Free();
+				time=_fun("time_now")["time_str"];
+				level=1;//1: admin 2: user 3: none
+				sql=sprintf("INSERT INTO user (name,password,email,phone,description,createtime,level,reserve) VALUES ('%s','%s','%s','%s','%s','%s',%d,'%s')",username,password,"","","",time,level,"");
+				result=db.Exec(sql);
+
+				//create folder table
+				sql=sprintf("create table folder (id integer PRIMARY KEY,name TEXT,path TEXT,description TEXT,createtime TEXT,level integer,reserve TEXT)");
+				result=db.Exec(sql);
+				sql=sprintf("create UNIQUE INDEX folder_name on folder (name) ");
+				result=db.Exec(sql);
+                name="Test";
+                path="c:\\";
+                desc="a demo folder";
+				level=1;//1: download 2: upload 3: none
+				sql=sprintf("INSERT INTO folder (name,path,description,createtime,level,reserve) VALUES ('%s','%s','%s','%s',%d,'%s')",name,path,desc,time,level,"");
+				result=db.Exec(sql);
+		   }
+		}
+		db.Close();	
+	}
+    
+    func CheckLogin(curdir,username,password)
+    {
+		user={};
+        if(!username || !password)
+			return user;
+        print(username,curdir);
+        createDB(curdir);
+        
+        comm=CCommon(curdir);
+		password=comm.md5(password);
+        comm.Free();
+		username=EscapeStr(username);
+
+		db=CSqlite(curdir);
+		if(db.Open(curdir+"FileHttpServer/admin.db"))
+		{
+			sql=sprintf("select * from user where name='%s' and password='%s' ",username,password);
+            result=db.Query(sql);
+			if(result)
+			{
+				count=db.RecordNum(result);
+                if(count>0)
+                {
+					user["name"]=GetField(db,result,1,"name");
+					user["email"]=GetField(db,result,1,"email");
+					user["level"]=GetField(db,result,1,"level");
+                }
+			}
+			db.Query_Free(result);
+		}
+		db.Close();
+        
+		return user;
+    }
+?>
+
+<?silk
+	args=_getargv()[0]; 
+	env=args["ENV"]; 
+	post=args["POST"]; 
+	globals=args["GLOBALS"]; 
+    curdir=globals["curdir"];
+	
+    post=GenerateDict(post);
+    username=post.find("username");
+    password=post.find("password");
+    user=CheckLogin(curdir,username,password);
+    if(user)
+    {
+		if(_int(user["level"])>-1)
+        {
+			SetSession(args,username,user);
+			Redirect(args,"/getlist.ssp");
+			return "";
+        }
+    }
+   
+?>
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="gb2312"> 
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>Silk File Server</title>
+	<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css">  
+	<script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+<body>
+
+<br><br>
+
+<div class="container-fluid">
+
+<div class="panel panel-primary">
+	<div class="panel-heading">
+		<h3 class="panel-title" align="center">Login</h3>
+	</div>
+	<div class="panel-body">
+	
+	<?silk
+    ?>
+    
+    <div id="myAlert" class="alert alert-warning" align="center">
+		<a href="#" class="close" data-dismiss="alert">&times;</a>
+		<strong>Username/Password error.</strong>
+	</div>
+	<div class="panel panel-default" align="center"> 
+		<div class="panel-body">
+		<a href='/login.ssp'><strong>Login</strong></a>
+		</div>
+	</div>
+
+
+    
+	</div>
+</div>
+</div>
+
+
+</body>
+</html>

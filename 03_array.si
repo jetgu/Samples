@@ -1,0 +1,32 @@
+
+main()
+{
+	//直接定义数组
+	array=[1,3.2,"Hello"];
+    //遍历数组中每一个元素
+	for(i=0;i<array.size();i++)
+		print(array[i]);    
+    
+    //定义空数组后追加
+	array=[];
+    array.append(1);
+    array.append(2.8);
+    array.append("good");
+    print(array);
+
+	//数组中包含数组或字典
+	array2=[1,true,"good",null,["good","OK"],{"wang":30},array];
+    print(array2);
+
+	//创建多维数组可以直接定义在方括号内：
+	arr=[[1,2,3],[4,5,6]];//创建2*3大小的二维数组
+	print(arr[1][1]);
+    
+	a=[];
+    a.create2d(2,3,"ok");//在a上创建2*3大小的二维数组，初始值为"ok"
+    print(a);
+
+    b=[];
+    b.create3d(2,3,2,0);//在b上创建2*3*2大小的三维数组，初始值为0
+    print(b);    
+}

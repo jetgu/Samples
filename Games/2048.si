@@ -1,0 +1,384 @@
+/*2048游戏
+根据C语言源代码改编成Silk语言
+原C语言参考地址ttps://blog.csdn.net/one_piece_luffy/article/details/44240295，感谢原作者。
+*/
+
+ROW = 4;
+COL = 4;
+game = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]];
+ 
+//上下左右
+UP = 1;
+DOWN = 2;
+LEFT = 3;
+RIGHT = 4;
+ 
+//游戏所处的状态
+GAME_OVER = 1;
+GAME_WIN = 2;
+GAME_CONTINUE = 3;
+ 
+Game_2 = 2;
+Game_4 = 4;
+
+score = 0;
+
+func rand()
+{
+	return _fun("time_rand");
+}
+func clear()
+{
+	cmd="cls";
+	if(_fun("os_platform").find("WIN")<0)
+		cmd="clear";
+	_fun("system",cmd);
+}
+func Sleep(m)
+{
+	_fun("time_sleep",m);
+}
+func get_curdir()
+{
+	curdir=_fun("curdir");
+	if(curdir.size()==0)
+		curdir="./";
+	return curdir;
+}
+func getchar()
+{
+    ret=null;
+	if(_fun("os_platform").find("WIN")<0)
+	{
+		//linux
+		_fun("system","stty -icanon");
+		c=_fun("getstdin",1);
+		_fun("system","stty icanon");
+       
+       if(c=="i" || c=="I")
+			ret= 72;
+       if(c=="k" || c=="K")
+			ret= 80
+       if(c=="j" || c=="J")
+			ret= 75;
+       if(c=="l" || c=="L")
+			ret= 77;
+    }
+    else
+    {
+		//windows
+		curdir=get_curdir();
+		filename=curdir+"SilkCommonLib64.dll";
+		if(_fun("os_platform").find("x64")<0)
+			filename=curdir+"SilkCommonLib.dll";//win32
+		lib=_loadlib(filename);
+		if(lib)
+		{
+			ret=_calllib(lib,"get_char");
+			if(ret)
+			{
+				if(ret[0]==224)//如果是方向键，先返回224，然后再取真正的键值
+					ret=_calllib(lib,"get_char");
+				ret=ret[0];
+			}
+		}
+		_freelib(lib);
+    }
+    
+	return ret;
+}
+ 
+//打印所得的数组
+func Print()
+{
+	clear();
+	print("*****************  2048 Game  ******************");
+	print("**********  Written in Silk language ***********");
+	printf("\nScore: %d \n",score);
+	for (i = 0; i < ROW; i++)
+	{
+		print("---------------------------------");
+		for (j = 0; j < COL; j++)
+		{
+			if (game[i][j] == 0)
+			{
+				printf("|   \t");
+			}
+			else 
+			{
+				printf("|   %d\t" ,game[i][j]);
+			}
+		}
+		print("|");
+	}
+	print("---------------------------------");
+    print("\nTips:");
+	print("Use arrow keys in Windows");
+	print("Use i,k,j,l keys in Linux");
+}
+ 
+ 
+func CreateNumber()
+{
+	x = -1;
+	y = -1;
+	times = 0;
+	maxTimes = ROW * COL;
+	//三分之二的概率生成2，三分之一的概率生成4
+	which = rand() % 3;
+
+    bOK=true;
+	while(bOK)
+	{
+		x = rand() % ROW;
+		y = rand() % COL;
+		times++;
+        
+        if(!(game[x][y] != 0 && times <= maxTimes)) 
+			bOK=false;
+	}
+     
+ 
+	//说明格子已经满了
+	if(times >= maxTimes)
+	{
+		return false;
+	}
+	else
+	{
+		num=0;
+		if(which == 0)
+		{
+			num = Game_4;
+		}
+		else if(which)
+		{
+			num = Game_2;
+		}
+		game[x][y] = num;
+	}
+ 
+	return true;
+}
+ 
+func Process(direction)
+{
+	global score;
+
+	if(direction == UP)
+    {
+		//最上面一行不动
+		for(row = 1; row < ROW; row++)
+		{
+			for(crow = row; crow >= 1; crow--)
+			{
+				for(col = 0; col < COL; col++)
+				{
+					//上一个格子为空
+					if(game[crow-1][col] == 0)
+					{
+						game[crow-1][col] = game[crow][col];
+						game[crow][col] = 0;
+					}
+					else 
+					{
+						//合并
+						if(game[crow-1][col] == game[crow][col])
+						{
+							game[crow - 1][col] *= 2;
+							game[crow][col] = 0;
+                            score += game[crow - 1][col];
+						}
+ 
+					}
+				}
+			}
+		}
+    }
+	if(direction == DOWN)
+    {
+		//最下面一行不动
+		for(row = ROW - 2; row >= 0; row--)
+		{
+			for(crow = row; crow < ROW - 1; crow++)
+			{
+				for(col = 0; col < COL; col++)
+				{
+					//上一个格子为空
+					if(game[crow + 1][col] == 0)
+					{
+						game[crow + 1][col] = game[crow][col];
+						game[crow][col] = 0;
+					}
+					else 
+					{
+						//合并
+						if(game[crow + 1][col] == game[crow][col])
+						{
+							game[crow + 1][col] *= 2;
+							game[crow][col] = 0;
+                            score += game[crow + 1][col];
+						}
+ 
+					}
+				}
+			}
+		}
+    }
+	if(direction == LEFT)
+    {
+		//最左边一列不动
+		for(col = 1; col < COL; col++)
+		{
+			for(ccol = col; ccol >= 1; ccol--)
+			{
+				for(row = 0; row < ROW; row++)
+				{
+					//上一个格子为空
+					if(game[row][ccol-1] == 0)
+					{
+						game[row][ccol - 1] = game[row][ccol];
+						game[row][ccol] = 0;
+					}
+					else 
+					{
+						//合并
+						if(game[row][ccol - 1] == game[row][ccol])
+						{
+							game[row][ccol - 1] *= 2;
+							game[row][ccol] = 0;
+                            score += game[row][ccol - 1];
+						}
+ 
+					}
+				}
+			}
+		}
+    }
+	if(direction == RIGHT)
+    {
+		//最右边一列不动
+		for(col = COL - 2; col >= 0; col--)
+		{
+			for(ccol = col; ccol <= COL - 2; ccol++)
+			{
+				for(row = 0; row < ROW; row++)
+				{
+					//上一个格子为空
+					if(game[row][ccol + 1] == 0)
+					{
+						game[row][ccol + 1] = game[row][ccol];
+						game[row][ccol] = 0;
+					}
+					else 
+					{
+						//合并
+						if(game[row][ccol + 1] == game[row][ccol])
+						{
+							game[row][ccol + 1] *= 2;
+							game[row][ccol] = 0;
+                            score += game[row][ccol + 1];
+						}
+ 
+					}
+				}
+			}
+		}
+	}
+ 
+}
+//处理输入输出，返回上下左右
+func Input()
+{
+	direction = 0;
+    
+	key=getchar();
+	if(key==72)
+		direction = UP;
+	if(key==80)
+		direction = DOWN;
+	if(key==75)
+		direction = LEFT;
+	if(key==77)
+		direction = RIGHT;
+
+    return direction;
+}
+ 
+//判断游戏状态
+func Judge()
+{
+	//赢得游戏
+	for(i = 0; i < ROW; i++)
+	{
+		for(j = 0; j < COL; j++)
+		{
+			if(game[i][j] == 2048)
+			{
+				return GAME_WIN;
+			}
+		}
+	}
+ 
+	//横向检查
+	for(i = 0 ; i < ROW; i++)
+	{
+		for(j = 0; j < COL - 1; j++)
+		{
+			if(!game[i][j] || (game[i][j] == game[i][j+1]))
+			{
+				return GAME_CONTINUE;
+			}
+		}
+	}
+	//纵向检查
+	for(j = 0; j< COL; j++)
+	{
+		for(i = 0; i < ROW -1; i++)
+		{
+			if(!game[i][j] || (game[i][j] == game[i+1][j]))
+			{
+				return GAME_CONTINUE;
+			}
+		}
+	}
+ 
+	//不符合上述两种状况，游戏结束
+	return GAME_OVER;
+ 
+}
+ 
+main()
+{
+	CreateNumber();
+	CreateNumber();
+	Print();
+	direction = 0;
+	gameState = -1;
+	while(true)
+	{
+		direction = Input();
+ 
+ 		gameState = Judge();
+		if(direction && gameState == GAME_CONTINUE)
+		{
+			Process(direction);
+			CreateNumber();
+			Print();
+			Sleep(100);
+		}
+		else if(gameState == GAME_WIN)
+		{
+			Print();
+			print("You Win！");
+			break;
+		}
+		else if(gameState == GAME_OVER)
+		{
+			Print();
+			print("You Lose!");
+			break;
+		}
+	}
+ 
+}

@@ -1,0 +1,176 @@
+static class CResponse(response)
+{
+	self.status_code=response[0];
+	if(response.size()==3)
+    {
+		self.header=response[1];
+		self.text=response[2];
+    }
+    else
+    {
+		self.header="";
+		self.text="";
+    }
+}
+class CHttpsLib(curdir=null)
+{
+	self.__lib=null;
+	self.curdir=curdir;
+    self.endSession=0;
+
+    func __get_curdir()
+	{
+        curdir=_fun("curdir");
+        if(curdir.size()==0)
+			curdir="./";
+		return curdir;
+	}
+    func __get_filename()
+    {
+        filename="HttpsLib64.dll";//win64
+		if(_fun("os_platform").find("x64")<0)
+			filename="HttpsLib.dll";//win32
+		return filename;
+    }
+
+	func utf8(text)
+	{
+ 		if(!self.__lib)
+			return null;    
+    
+        ret=_calllib(self.__lib,"utf8_to_ansi",text);
+        if(_len(ret)>0)
+        {
+			return ret[0];
+        }
+		return null;	
+	}
+    func end_session(end)
+    {
+		if(end)
+			self.endSession=1;
+        else
+			self.endSession=0;
+    }	
+	func get(url,header=null,timeout=20000,proxy=null)
+	{
+ 		if(!self.__lib)
+			return null;    
+            
+        headers="";
+        if(_type(header)=="DICT")
+        {
+			for(i=header.begin();!header.end(i);header.next(i))
+				headers+=sprintf("%s: %s\r\n",header.get(i)[0],header.get(i)[1]);
+        }
+        proxies="";
+        if(_type(proxy)=="DICT")
+        {
+			server=proxy.find("server");
+			port=proxy.find("port");
+            if(server&&port)
+				proxies=sprintf("%s:%d",server,port);
+        }
+        ret=_calllib(self.__lib,"get",url,headers,timeout,proxies,self.endSession);
+        if(_len(ret)>0)
+        {
+			res=CResponse(ret);
+			return res;
+        }
+		return null;	
+	}
+	func download(url,filename,header=null,timeout=20000,proxy=null)
+	{
+ 		if(!self.__lib)
+			return null;    
+            
+        headers="";
+        if(_type(header)=="DICT")
+        {
+			for(i=header.begin();!header.end(i);header.next(i))
+				headers+=sprintf("%s: %s\r\n",header.get(i)[0],header.get(i)[1]);
+        }
+        proxies="";
+        if(_type(proxy)=="DICT")
+        {
+			server=proxy.find("server");
+			port=proxy.find("port");
+            if(server&&port)
+				proxies=sprintf("%s:%d",server,port);
+        }
+        ret=_calllib(self.__lib,"download",url,filename,headers,timeout,proxies,self.endSession);
+        if(_len(ret)>0)
+        {
+			res=CResponse(ret);
+			return res;
+        }
+		return null;	
+	}
+	func post(url,data,header=null,timeout=20000,proxy=null)
+	{
+ 		if(!self.__lib)
+			return null;    
+            
+        sdata="";
+        if(_type(data)=="DICT")
+        {
+			for(i=data.begin();!data.end(i);data.next(i))
+            {
+				kv=data.get(i);
+				key=_fun("url_escape",_str(kv[0]));
+				value=_fun("url_escape",_str(kv[1]));
+				sdata+=sprintf("%s=%s&",key,value);
+            }
+            if(sdata.size()>0)
+					sdata=sdata.substr(0,sdata.size()-1);
+        }
+        headers="";
+        if(_type(header)=="DICT")
+        {
+			for(i=header.begin();!header.end(i);header.next(i))
+            {
+				kv=header.get(i);
+				headers+=sprintf("%s: %s\r\n",kv[0],_str(kv[1]));
+            }
+        }
+        proxies="";
+        if(_type(proxy)=="DICT")
+        {
+			server=proxy.find("server");
+			port=proxy.find("port");
+            if(server&&port)
+				proxies=sprintf("%s:%d",server,port);
+        }
+        ret=_calllib(self.__lib,"post",url,sdata,headers,timeout,proxies,self.endSession);
+        if(_len(ret)>0)
+        {
+			res=CResponse(ret);
+			return res;
+        }
+		return null;	
+	}
+
+
+	func __Load()
+	{
+		if(!self.curdir)
+			self.curdir=self.get_curdir();
+
+		self.__lib=_loadlib(self.curdir+self.__get_filename());
+ 		if(self.__lib)
+			return true;
+		return false;	
+	}
+	func Free()
+	{
+		if(self.__lib)
+		{
+			_freelib(self.__lib);
+            self.__lib=null;
+		}
+	}    
+    self.__Load();
+}
+
+main()
+{}

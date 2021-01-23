@@ -1,0 +1,114 @@
+<?silk
+	#include "./include/file.si"
+
+	func SendHeader(mime,code,filename,length,slash="/")
+    {
+		pos=filename.rfind(slash);
+        if(pos>0)
+			filename=filename.substr(pos+1);
+		pos=filename.rfind(".");
+		ext=filename.substr(pos);
+		type="application/octet-stream";
+        if(ext)
+        {
+			temp=mime.find(ext.lower());
+			if(temp)
+				type=temp;
+        }
+		buff=sprintf("Content-Type: %s\r\nContent-Length: %d\r\n",type,length);
+        if(type=="application/octet-stream" || type=="application/x-zip-compressed")
+			buff+=sprintf("Content-Disposition: attachment;filename=%s\r\n\r\n",filename);
+        else
+			buff+=sprintf("Content-Disposition: inline;filename=%s\r\n\r\n",filename);
+
+		printf(buff);
+    }    
+	func SendFile(mime,filename,slash)
+	{
+		size=4096;
+		file=CFile();
+        if(file.Open(filename,"rb"))
+		{
+			s=file.Read(size);
+			if(s!=null)
+			{
+                SendHeader(mime,200,filename,file.size,slash);
+                _fun("putstdin",s);
+				
+				//continue reading and sending
+				pos=_len(s);
+				while(pos<file.size)
+				{
+					file.Seek(pos);
+					s=file.Read(size);
+					_fun("putstdin",s);	
+					pos+=_len(s);
+				}
+			}
+			file.Close();
+
+		}
+		else
+		{
+			str="Not found";
+            SendHeader(mime,404,".html",str.size());
+			printf(str);	
+		}
+	}  
+
+	func Mime()
+    {
+		mime={};
+		mime[".html"]="text/html";
+		mime[".htm"]="text/html";
+		mime[".css"]="text/css";
+		mime[".txt"]="text/plain";
+		mime[".js"]="application/x-javascript";
+		mime[".ico"]="image/x-icon";
+		mime[".gif"]="image/gif";
+		mime[".jpg"]="image/jpeg";
+		mime[".jpeg"]="image/jpeg";
+		mime[".png"]="image/png";
+		mime[".exe"]="application/octet-stream";
+		mime[".zip"]="application/x-zip-compressed";
+		mime[".rar"]="application/x-rar-compressed";
+        
+		return mime;
+    }
+       
+    mime=Mime();
+	args=_getargv()[0]; 
+	params=args["PARAMS"]; 
+	vfolders=params["virtual_folders"];
+
+	env=args["ENV"]; 
+	slash="\\";
+	if(_fun("os_platform").find("WIN")<0)
+		slash="/";
+
+    
+	results=[];
+    query=env["QUERY"];
+	file=query.find("file");
+	if(file)
+	{
+		file=_fun("url_unescape",file);
+		file=file.replace("+"," ");
+		//print(file);
+		name="";
+		pos=file.find(slash);
+		if(pos>0)
+			name=file.substr(0,pos);
+		folder=vfolders.find(name);
+		if(folder)
+		{
+			path=folder;
+			pos=file.find(name);
+			file=file.replace(pos,name.size(),path);
+		}
+
+		SendFile(mime,file,slash);
+	}
+    
+?>
+

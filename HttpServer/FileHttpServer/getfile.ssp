@@ -1,0 +1,123 @@
+<?silk
+	#include "../../include/file.si"
+    #include "functions.ssp"
+	
+	func SendHeader(socket,mime,code,filename,length,slash="/")
+    {
+		pos=filename.rfind(slash);
+        if(pos>0)
+			filename=filename.substr(pos+1);
+		pos=filename.rfind(".");
+		ext=filename.substr(pos);
+		type="application/octet-stream";
+        if(ext)
+        {
+			temp=mime.find(ext.lower());
+			if(temp)
+				type=temp;
+        }
+		buff=sprintf("HTTP/1.0 %d OK\r\nContent-Type: %s\r\nContent-Length: %d\r\n",code,type,length);
+        if(type=="application/octet-stream" || type=="application/x-zip-compressed")
+			buff+=sprintf("Content-Disposition: attachment;filename=%s\r\n\r\n",filename);
+        else
+			buff+=sprintf("Content-Disposition: inline;filename=%s\r\n\r\n",filename);
+
+		return socket.send(buff);
+    }    
+	func SendFile(socket,mime,filename,slash)
+	{
+		size=4096;
+		file=CFile();
+        print(filename);
+		if(file.Open(filename,"rb"))
+		{
+			s=file.Read(size);
+			if(s!=null)
+			{
+                ret=SendHeader(socket,mime,200,filename,file.size,slash);
+				if(ret<0)
+				{
+					file.Close();
+					return;
+				}
+                ret=socket.send(s);
+				if(ret<0)
+				{
+					file.Close();
+					return;
+				}
+				
+				//continue reading and sending
+				pos=_len(s);
+				while(pos<file.size)
+				{
+					file.Seek(pos);
+					s=file.Read(size);
+					ret=socket.send(s);	
+					if(ret<0)
+						break;
+					pos+=_len(s);
+				}
+			}
+			file.Close();
+
+		}
+		else
+		{
+			str="Not found";
+            SendHeader(socket,mime,404,".html",str.size());
+			socket.send(str);	
+		}
+	}        
+?>
+
+
+<?silk
+
+	args=_getargv()[0]; 
+	globals=args["GLOBALS"]; 
+    mime=globals["mime"];
+	vfolders=globals["virtual_folders"];
+	curdir=globals["curdir"];
+
+	env=args["ENV"]; 
+    socket=args["SOCKET"];
+	slash="\\";
+	if(_fun("os_platform").find("WIN")<0)
+		slash="/";
+
+    cookies=GetCookies(args);
+    nRet=FindUser(args,cookies);
+    if(nRet==-1)
+    {
+		Redirect(args,"/login.ssp");
+        return "";
+    }
+    
+	results=[];
+    query=env["QUERY_DICT"];
+	file=query.find("file");
+	if(file)
+	{
+		file=_fun("url_unescape",file);
+		file=file.replace("+"," ");
+		print(file);
+		name="";
+		pos=file.find(slash);
+		if(pos>0)
+			name=file.substr(0,pos);
+		folder=vfolders.find(name);
+		if(folder)
+		{
+			path=folder["path"];
+			pos=file.find(name);
+			file=file.replace(pos,name.size(),path);
+		}
+		//print(name,path,file);
+		SendFile(socket,mime,file,slash);
+		socket.close();
+		args["CLOSE"]=true;
+	}
+    
+?>
+

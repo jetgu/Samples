@@ -1,0 +1,135 @@
+//<?silk return "no permission"; ?>
+
+func GenerateDict(data)
+{
+	data_dict={};
+	items=data.split("&");
+	for(i=0;i<items.size();i++)
+	{
+		temp=items[i].split("=");
+		if(temp.size()>1)
+			data_dict[temp[0]]=temp[1];
+	}
+	return data_dict;
+}  
+func Redirect(args,url)
+{
+	args["CODE"]=301;
+	args["HEADER"]["Location"]=url;
+	args["HEADER"]["Cache-Control"]="no-cache";
+}
+func SetCookie(args,cookie)
+{
+	existing=args["HEADER"].find("Set-Cookie");
+	if(existing)
+		cookie=existing+"; "+cookie;
+	args["HEADER"]["Set-Cookie"] = cookie;
+}
+func GetCookies(args)
+{
+	cookies={};
+	env=args["ENV"]; 
+	cookie=env.find("HTTP_COOKIE");
+	if(cookie)
+	{
+		cookieArr=cookie.split("; ");
+		for(i=0;i<cookieArr.size();i++)
+		{
+			pair=cookieArr[i].split("=");
+			if(pair)
+				cookies[pair[0]]=pair[1];
+		}
+	}
+	return cookies;
+}
+func FindSession(args,cookies)
+{
+	session=cookies.find("SessionID");
+	sessions=args["GLOBALS"]["sessions"];
+	return sessions.find(session);
+}
+func SetSession(args,username,user)
+{
+	globals=args["GLOBALS"]; 
+	lock=globals["lock"];
+	sessions=globals["sessions"];
+	usernames=globals["usernames"];
+	session=sprintf("%d%d",_fun("time_rand"),_fun("time_rand"));
+	_lock(lock);
+	sessions[session]=username;
+	usernames[username]=user;
+	_unlock(lock);
+	session="SessionID="+session;
+	SetCookie(args,session);
+
+}
+func EscapeStr(name)
+{
+	name=_fun("url_escape",name);
+	name=name.replace("%5F","_");
+	return name;
+}
+func GetField(db,result,i,fieldname)
+{
+	value=db.GetByFieldName(result,i,fieldname);
+	value=_fun("url_unescape",value);
+	if(!value)
+		value="";
+	value=value.replace("+"," ");
+	return value;    
+}
+func FindUser(args,cookies)
+{
+	nRet=0;
+	lock=args["GLOBALS"]["lock"];
+	_lock(lock);
+	username=FindSession(args,cookies);
+	if(username)
+	{
+		usernames=args["GLOBALS"]["usernames"];
+		user=usernames.find(username);
+		if(user)
+		{
+			nRet=_int(user["level"]);
+		}
+	}
+	else
+		nRet=-1;
+	_unlock(lock);
+
+	return nRet;
+}
+func LoadFolders(curdir,vfolders)
+{
+	
+	db=CSqlite(curdir);
+	if(db.Open(curdir+"FileHttpServer/admin.db"))
+	{
+		sql=sprintf("select * from folder ");
+		result=db.Query(sql);
+		if(result)
+		{
+			count=db.RecordNum(result);
+			for(i=1;i<=count;i++)
+			{
+				item={};
+				item["name"]=GetField(db,result,i,"name");
+				item["path"]=GetField(db,result,i,"path");
+				item["desc"]=GetField(db,result,i,"description");
+				item["level"]=GetField(db,result,i,"level");
+				vfolders[item["name"]]=item;
+			}
+		}
+		db.Query_Free(result);
+	}
+	db.Close();
+	
+}
+func SaveFolders(args,vfolders)
+{
+	lock=args["GLOBALS"]["lock"];
+	_lock(lock);
+	globals=args["GLOBALS"]; 
+	globals["virtual_folders"]=vfolders;
+	_unlock(lock);
+}

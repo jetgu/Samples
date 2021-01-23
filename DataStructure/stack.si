@@ -1,0 +1,106 @@
+//一个用链表实现的栈类
+class Node()
+{
+	self.data=null;
+	self.next=null;
+}
+class ListStack()
+{
+	self.top=null;
+	self.size=0;
+	
+    func Empty()
+	{
+		return (self.size == 0);
+	}
+
+	func Push(data)
+	{
+		node=Node();	
+		node.data = data;
+		
+		if(self.Empty())
+		{
+			self.top = node;
+		}
+		else
+		{            
+			node.next = self.top;
+			self.top = node;            
+		}
+		self.size++;
+	}
+    
+	func Pop()
+	{
+		if(self.Empty())
+		{
+			return null;
+		}
+		data = self.top.data;
+		self.top = self.top.next;
+		self.size--;
+
+		return data;
+	}
+	 
+	func Destroy()
+	{
+		while(self.top)
+		{
+			self.top = self.top.next;
+			self.size--;
+		}
+	}        
+}
+
+//一个用Silk数组实现的栈类
+class ArrayStack()
+{
+	self.Data=[];
+	
+    func Empty()
+	{
+		return (self.Data.size() == 0);
+	}
+
+	func Push(data)
+	{
+		self.Data.append(data);
+	}
+    
+	func Pop()
+	{
+		if(self.Empty())
+		{
+			return null;
+		}
+        top=self.Data.size()-1;
+		data = self.Data[top];
+		self.Data.erase(top);
+
+		return data;
+	}
+	 
+	func Destroy()
+	{
+		self.Data.clear();
+	}        
+}
+
+main()
+{
+	//stack=ListStack();
+	stack=ArrayStack();
+	for(i=0; i<25; i++)
+	{
+		stack.Push(i);
+	}
+    //stack.Destroy();
+	while(!stack.Empty())
+	{
+		i=stack.Pop();
+		printf("%d ", i);
+	}
+
+}

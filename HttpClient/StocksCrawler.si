@@ -1,0 +1,147 @@
+//这是一个利用HttpsLib和正则表达式爬取A股股票信息的爬虫程序
+
+#include "./HttpsLib.si"
+
+_gInfo=[];
+
+func StockDetail()
+{
+	if(_gInfo.size()==0)
+		return;
+        
+	while(1)
+    {
+		print("\n【请输入编号按回车获取详细信息：】");
+		index=_int(_input())-1;
+		if(index<0 || index>=_gInfo.size())
+		{
+			print("错误编号！");
+			continue;
+		}
+		url="https://www.banban.cn/"+_gInfo[index];
+		https=CHttpsLib(_fun("curdir"));//set the path of the Dll(HttpsLib.dll)
+		ret=https.get(url);
+		if(ret)
+		{
+			html=https.utf8(ret.text);
+			//print(html);
+			html=html.replace("\n","<br/>");
+			pattern="<p>(.*?)</p>";
+			r=_fun("regex_searchall",html,pattern);
+			if(r)
+			{
+				text="";
+				for(i=0;i<r.size();i++)
+				{
+					print(r[i]);
+				}
+				print("\n【输入B按回车返回菜单。】");
+                key=_input().rtrim().upper();
+                if(key=="B")
+                {
+					https.Free();
+					return;
+                }
+			}
+			else
+				print("未找到信息！");
+		}
+
+		https.Free();
+    }
+
+}
+func StockSearch()
+{
+	print("\n【请输入股票代码按回车获取相关信息：】");
+	stock_id=_input();
+	url="https://www.banban.cn/gupiao/"+stock_id;
+	https=CHttpsLib(_fun("curdir"));//set the path of the Dll(HttpsLib.dll)
+    ret=https.get(url);
+    if(ret)
+    {
+		html=https.utf8(ret.text);
+		//print(html);
+		html=html.replace("\n","<br/>");
+		pattern="<h3>(.*?)</h3>";
+		r=_fun("regex_searchall",html,pattern);
+		if(r)
+		{
+			_gInfo.clear();
+			text="";
+			for(i=0;i<r.size();i++)
+            {
+				pattern="<h3><a href=\"(.*?)\" target=\"_blank\">(.*?)</a></h3>";
+				m=_fun("regex_match",r[i],pattern);
+				print(i+1,m[2]);
+                _gInfo.append(m[1]);
+            }
+            StockDetail();
+		}
+        else
+			print("未找到该股票信息！");
+    }
+
+	https.Free();
+
+}
+func StockList()
+{
+	url="https://www.banban.cn/gupiao/list_sh.html";
+	https=CHttpsLib(_fun("curdir"));//set the path of the Dll(HttpsLib.dll)
+    ret=https.get(url);
+    if(ret)
+    {
+		html=https.utf8(ret.text);
+		//print(html);
+		html=html.replace("\n","<br/>");
+		pattern="<a href=\"/gupiao/\d{6}/\">(.*?)</a>";
+		r=_fun("regex_searchall",html,pattern);
+		if(r)
+		{
+			text="";
+			for(i=0;i<r.size();i++)
+            {
+				pattern="<a href=\"(.*?)\">(.*?)</a>";
+				m=_fun("regex_match",r[i],pattern);
+				print(m[2]);
+            }
+		}        
+    }
+	https.Free();
+
+}
+main()
+{
+	while(1)
+    {
+		_fun("system","cls");
+		print("\t****************************************");
+		print("\t*           A股股票信息查询系统        *");
+		print("\t*                                      *");
+		print("\t*                                      *");
+		print("\t*               1.股票列表             *");
+		print("\t*                                      *");
+		print("\t*               2.股票查询             *");
+		print("\t*                                      *");
+		print("\t*       输入编号按回车进行相关操作     *");
+		print("\t*                                      *");
+		print("\t****************************************");
+		key=_int(_input());
+		
+		if(key==1){
+			StockList();
+ 		}
+		else if(key==2){
+			StockSearch();
+ 		}
+		else
+		{
+			print("\n             错误操作！");
+		}
+
+		print("\n             输入回车键返回菜单！");
+		_input();
+    }
+
+}

@@ -1,0 +1,41 @@
+
+main()
+{
+    printf("请输入一个字符按回车: ");
+	c=_input()[0];//输入的字符里包含回车，取第一个字符
+    // %d 显示整数
+    // %c 显示对应字符
+    printf("%c 的 ASCII 为 %d\n", c, c);
+    
+    //格式化字符串
+	s=sprintf("%d,%s,%f\r\n",100,"abc",100.23);
+    print(s);
+    
+    //字符串相加
+    str1="Good";
+    str2="Morning";
+    str=str1+" "+str2;
+    print("相加的字符串为：",str);
+    
+    //数字转字符串
+    num=100;
+    s=_str(num);
+    //s=sprintf("%d",num);//第二种方法
+    print(s);
+    
+    //字符串转数字
+    s="13.26";
+    num=_str(s);
+    print(num);
+    
+    //获取字符串长度
+	s="Hello";
+	len=s.size();
+	//len=_len(s);//第二种方法
+    print(len);
+    
+    //获取子字符串
+	s="Hello";
+	s2=s.substr(1,2);//从位置1开始截取长度为2的字符串，所以s2="el"
+    print(s2);
+}

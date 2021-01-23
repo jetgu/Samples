@@ -1,0 +1,148 @@
+<?silk
+    printf("Content-type:text/html\n\n");//header
+
+	args=_getargv()[0]; 
+	params=args["PARAMS"]; 
+	env=args["ENV"]; 
+	query=env["QUERY"];
+	vfolders=params["virtual_folders"];
+	upload_enable=params.find("upload_enable");
+
+	slash="\\";
+	DirName="/";
+	bVirtualFolder=true;
+	results=[];
+    
+    //load the lib
+	curdir=params["curdir"];
+	filename=curdir+"fileserver/SilkCommonLib64.dll";
+	if(_fun("os_platform").find("WIN")<0)
+	{
+		slash="/";
+		filename=curdir+"fileserver/SilkCommonLib";
+	}
+	lib=_loadlib(filename);
+    if(!lib)
+    {
+		print("load lib error");
+        return "";
+    }
+    
+    //get list
+    if(query)
+    {
+		dir=query.find("dir");
+		if(dir)
+		{	
+			bVirtualFolder=false;
+			
+            DirName=_fun("url_unescape",dir);
+			DirName=DirName.replace("+"," ");
+            //print(DirName);
+            
+			VirtualName=DirName;
+			pos=DirName.find(slash);
+            if(pos>0)
+				VirtualName=DirName.substr(0,pos);
+			path=vfolders.find(VirtualName);
+            path=DirName.replace(VirtualName,path);
+            //print(path);
+            results=_calllib(lib,"dir_files",path);
+		}
+    }
+    
+    _freelib(lib);
+?>
+
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Silk Http File Server</title>
+
+<body>
+<h3>
+<?silk
+	  if(upload_enable)
+      {
+		buff=sprintf("<a href='fileserver.si?page=upload.ssp'>Upload file >></a>");
+		response.write(buff);
+      }
+?>      
+</h3>      
+<hr>
+
+<h2><?silk response.write(sprintf("Directory listing for [%s]",DirName)); ?></h2>
+<hr>
+<ul>
+
+<?silk 
+
+  if(bVirtualFolder)//list virtual folders
+  {
+	  for(i=vfolders.begin();!vfolders.end(i);vfolders.next(i))
+	  {
+		folder=vfolders.get(i)[0];
+		
+		buff=sprintf("<li><a href='fileserver.si?page=getlist.ssp&dir=%s'><strong>%s</strong></a></li>",folder,folder);
+		response.write(buff);
+	  }
+  }
+  else // list folders/files under virtual folders
+  {
+	  ParentDir="";
+	  pos=DirName.rfind(slash);
+      if(pos>0)
+		 ParentDir=DirName.substr(0,pos);
+      if(ParentDir=="")
+		 buff=sprintf("<li><a href='fileserver.si'><strong>[%s]</strong></a></li>","..");
+      else   	
+		 buff=sprintf("<li><a href='fileserver.si?page=getlist.ssp&dir=%s'><strong>[%s]</strong></a></li>",ParentDir,"..");
+	  response.write(buff);
+      
+	  for(i=0;i<results.size();i++)
+	  {
+		fileInfo=results[i].split("|");
+		if(fileInfo[6]!="dir")
+			continue;
+		
+		array=fileInfo[0].split(slash);
+		filename="";
+		if(array.size()>0)
+			filename=array[array.size()-1];
+		buff=sprintf("<li><a href='fileserver.si?page=getlist.ssp&dir=%s%s%s'><strong>[%s]</strong></a></li>",DirName,slash,filename,filename);
+		
+		response.write(buff);
+	  }
+
+	  for(i=0;i<results.size();i++)
+	  {
+		fileInfo=results[i].split("|");
+		if(fileInfo[6]=="dir")
+			continue;
+		
+		array=fileInfo[0].split(slash);
+		filename="";
+		if(array.size()>0)
+			filename=array[array.size()-1];
+        nSize=_int(fileInfo[1])/1024;
+        if(nSize==0)
+			strSize=sprintf("%s byte",fileInfo[1]);
+        else
+			strSize=sprintf("%d KB",nSize);
+		buff=sprintf("<li><a href='fileserver.si?page=getfile.ssp&file=%s%s%s'>%s</a> (size: %s)</li>",DirName,slash,filename,filename,strSize);
+		
+		response.write(buff);
+	  }
+  
+  }
+  
+?>          
+
+</ul>
+<hr>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<?silk
+	#include "../../include/common.si"
+	#include "../../include/sqlite.si"
+    #include "functions.ssp"
+
+    func GetUser(curdir,username)
+    {
+        user={};
+		db=CSqlite(curdir);
+		if(db.Open(curdir+"FileHttpServer/admin.db"))
+		{
+			username=EscapeStr(username);
+			sql=sprintf("select * from user where name='%s'",username);
+            result=db.Query(sql);
+			if(result)
+			{
+				count=db.RecordNum(result);
+                if(count>0)
+                {
+					user["name"]=GetField(db,result,1,"name");
+					user["email"]=GetField(db,result,1,"email");
+					user["desc"]=GetField(db,result,1,"description");
+					user["permission"]=GetField(db,result,1,"level");
+                }
+			}
+			db.Query_Free(result);
+		}
+		db.Close();
+        return user;
+    }
+
+	args=_getargv()[0]; 
+	env=args["ENV"]; 
+	query=env["QUERY_DICT"];
+	globals=args["GLOBALS"]; 
+    curdir=globals["curdir"];
+
+    cookies=GetCookies(args);
+	session=FindSession(args,cookies);
+    if(!session)
+    {
+		Redirect(args,"/login.ssp");
+        return "";
+    }
+    
+    username=query.find("user");
+    user=GetUser(curdir,username);
+
+?>
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="gb2312"> 
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>Silk File Server</title>
+	<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css">  
+	<script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+	<script language="JavaScript">
+	function input(ok)
+	{
+		var M1=ok.username.value;
+		if (M1=="")	{
+			alert("Username is empty!");   
+			return false;
+		}
+		var vReg = /^[0-9a-zA-Z_]*$/g;
+        if(vReg.test(M1)){
+        }
+        else
+        {
+			alert("Username can only contain letters, numbers and underscores.");
+            return false;
+        }
+          
+		if (ok.password.value.length>0)	
+        {
+			M1=ok.password.value;
+			if (M1.length<6)	{
+				alert("Password must have at least 6 characters!");   
+				return false;
+			}
+			if (ok.password.value!=ok.password2.value)	{
+				alert("The two passwords that you typed do not match!");   
+				return false;
+			}
+        }
+		if (ok.email.value.length>0)	
+        {
+			isEmail1=/^\w+([\.\-]\w+)*\@\w+([\.\-]\w+)*\.\w+$/; 
+			isEmail2=/^.*@[^_]*$/; 
+			if(isEmail1.test(ok.email.value)&&isEmail2.test(ok.email.value)) {
+			}
+			else
+			{
+				alert("Email is Invalid!");
+				return false;
+			}
+        }
+		return true;
+	}
+	</script>
+    
+</head>
+<body>
+
+<br><br>
+<div class="container-fluid">
+
+<div class="panel panel-primary">
+	<div class="panel-heading">
+		<h3 class="panel-title" align="center">User</h3>
+	</div>
+	<div class="panel-body">
+    
+<form class="form-horizontal" role="form" method="POST" action="/user_process.ssp" onSubmit="return input(this)">
+	<input type="hidden" name="update" value="true">
+	
+    <div class="form-group">
+		<label for="username" class="col-sm-2 control-label">Username</label>
+		<div class="col-sm-10">
+			<label class="col-sm-2 control-label"> <?silk response.write(user["name"]); ?>  </label>
+			<input type="hidden" name="username" id="username" value="<?silk response.write(user["name"]); ?>">
+		</div>
+	</div>
+	<div class="form-group">
+		<label for="password" class="col-sm-2 control-label">New password</label>
+		<div class="col-sm-10">
+			<input type="password" class="form-control" id="password" name="password" placeholder="Please type new password">
+		</div>
+	</div>
+	<div class="form-group">
+		<label for="password" class="col-sm-2 control-label">Confirm New password</label>
+		<div class="col-sm-10">
+			<input type="password" class="form-control" id="password2" name="password2" placeholder="Please type new password again">
+		</div>
+	</div>
+	<div class="form-group">
+		<label for="email" class="col-sm-2 control-label">Email</label>
+		<div class="col-sm-10">
+			<input type="text" class="form-control" id="email" name="email"
+				   placeholder="Please type email" value="<?silk response.write(user["email"]); ?>">
+		</div>
+	</div>
+	<div class="form-group">
+		<label for="description" class="col-sm-2 control-label">Description</label>
+		<div class="col-sm-10">
+			<input type="text" class="form-control" id="description" name="description"
+				   placeholder="Please type description" value="<?silk response.write(user["desc"]); ?>">
+		</div>
+	</div>
+	<div class="form-group">
+		<label for="permission" class="col-sm-2 control-label">Permission</label>
+		<div class="col-sm-10">
+			<select class="form-control" name="permission">
+            <?silk 
+				if(user["permission"]=="1")
+					response.write("<option value=1 selected>Admin</option>");
+                else
+					response.write("<option value=1>Admin</option>");
+				if(user["permission"]=="2")
+					response.write("<option value=2 selected>User</option>");
+                else
+					response.write("<option value=2>User</option>");
+				if(user["permission"]=="-1")
+					response.write("<option value=-1 selected>None</option>");
+                else
+					response.write("<option value=-1>None</option>");
+            ?>   
+ 			</select>
+		</div>
+	</div>
+
+	<div class="form-group">
+		<div class="col-sm-offset-2 col-sm-10">
+			<button type="submit" class="btn btn-default">Update</button>
+		</div>
+	</div>
+</form>
+
+	</div>
+</div>
+
+</div>
+
+</body>
+</html>

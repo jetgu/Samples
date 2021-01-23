@@ -1,0 +1,104 @@
+//a number guess game
+
+func guess()
+{
+    count = 1;
+    m = (_fun("time_rand") % 100) + 1;
+    print("Generating a random number between 1 and 100...");
+    print("Please enter your guess:");
+    while(true)
+    {
+        n=_int(_input());
+        if (n == m)
+        {
+            printf("It took you %d attempts to guess the number\n", count);
+            if (count == 1)
+            {
+                print("Unbelievable!!!");
+                print("Try again? Y/N");
+                begin=_input();
+                if (begin == "Y\n" || begin == "y\n")
+                {
+                    guess();
+                }
+                else
+                {
+                    print("Bye");
+                }
+            }
+            else if (count <= 5)
+            {
+                print("Amazing!!");
+                print("Try again? Y/N");
+                begin=_input();
+                if (begin == "Y\n" || begin == "y\n")
+                {
+                    guess();
+                }
+                else
+                {
+                    print("Bye");
+                }
+            }
+            else if (count <= 10)
+            {
+                print("Great!");
+                print("Try again? Y/N");
+                begin=_input();
+                if (begin == "Y\n" || begin == "y\n")
+                {
+                    guess();
+                }
+                else
+                {
+                    print("Bye");
+                }
+            }
+            else if (count <= 15)
+            {
+                print("Good!");
+                print("Try again? Y/N");
+                begin=_input();
+                if (begin == "Y\n" || begin == "y\n")
+                {
+                    guess();
+                }
+                else
+                {
+                    print("Bye");
+                }
+            }
+            else
+            {
+                print("Well done, try again? Y/N");
+                begin=_input();
+                if (begin == "Y\n" || begin == "y\n")
+                {
+                    guess();
+                }
+                else
+                {
+                    print("Bye");
+                }
+            }
+            break;
+        }
+        else if (n < m)
+        {
+            print("Your guess is too low!");
+            print("Enter your guess again:");
+        }
+        else
+        {
+            print("Your guess is too high!");
+            print("Enter your guess again:");
+        }
+        count++;
+        
+    }
+}
+
+main()
+{
+	guess();
+}

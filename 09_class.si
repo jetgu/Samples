@@ -1,0 +1,34 @@
+//父类Animal
+class Animal(name)
+{
+    self.name=name;
+  
+    func description()
+    {
+        printf("this is %s\n",self.name);
+    }
+}
+//子类Dog
+class Dog(name)
+{
+    self=Animal(name);//继承父类Animal
+    self.super_description=self.description;//保存父类的方法
+  
+    func SetName(name)
+    {
+        self.name=name;//调用并修改父类中定义的属性
+    }
+    func description()//重写父类中的方法
+    {
+        self.super_description();//调用保存的父类中的方法
+        printf("I can swim\n");
+    }
+}
+
+main()
+{
+    dog=Dog("dog");//创建类对象
+    dog.description();//调用类方法
+    dog.SetName("Husky");
+    print(dog.name);//打印类对象的属性
+}

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="gb2312"> 
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>Silk File Server</title>
+	<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css">  
+	<script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+<body>
+
+<br><br>
+<div class="container-fluid">
+
+<div class="panel panel-primary">
+	<div class="panel-heading">
+		<h3 class="panel-title" align="center">Login</h3>
+	</div>
+	<div class="panel-body">
+    
+<form class="form-horizontal" role="form" method="POST" action="/login_process.ssp">
+	<div class="form-group">
+		<label for="username" class="col-sm-2 control-label">Username</label>
+		<div class="col-sm-10">
+			<input type="text" class="form-control" id="username" name="username"
+				   placeholder="Please type username">
+		</div>
+	</div>
+	<div class="form-group">
+		<label for="password" class="col-sm-2 control-label">Password</label>
+		<div class="col-sm-10">
+			<input type="password" class="form-control" id="password" name="password" placeholder="Please type password">
+		</div>
+	</div>
+
+	<div class="form-group">
+		<div class="col-sm-offset-2 col-sm-10">
+			<button type="submit" class="btn btn-default">Login</button>
+		</div>
+	</div>
+</form>
+
+	</div>
+</div>
+
+</div>
+
+</body>
+</html>

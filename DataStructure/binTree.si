@@ -1,0 +1,104 @@
+//用Silk语言演示二叉树的建立，和各种遍历
+class Node()
+{
+	self.data=null;
+    self.lchild=null;
+    self.rchild=null;
+}
+
+func CreateTree()
+{
+	print("请输入结点值按回车，空结点输入0");
+	c=_input().trim();
+	if(c=="0")      //若为0,则该结点为空
+		return null;
+
+	node=Node();
+	node.data=c;
+	node.lchild=CreateTree();
+	node.rchild=CreateTree();
+    return node;
+}
+
+func PreOrderTraverse(node)     //递归先序遍历二叉树
+{
+	if(node)
+	{
+		print(node.data);
+		PreOrderTraverse(node.lchild);
+		PreOrderTraverse(node.rchild);
+	}
+}
+
+func InOrderTraverse(node)
+{
+	if(node)
+	{
+		InOrderTraverse(node.lchild);
+		print(node.data);
+		InOrderTraverse(node.rchild);
+	}
+}
+
+func PostOrderTraverse(node)
+{
+	if(node)
+	{
+		PostOrderTraverse(node.lchild);
+		PostOrderTraverse(node.rchild);
+		print(node.data);
+	}
+}
+
+func NodeNumbers(node,count)
+{
+	if(node)
+	{
+		count[0]++;
+		NodeNumbers(node.lchild,count);
+		NodeNumbers(node.rchild,count);
+	}
+}
+func TreeDepth(node)
+{
+	if(node==null)
+		return 0;
+	else
+	{
+		leftlen=TreeDepth(node.lchild)+1;
+		rightlen=TreeDepth(node.rchild)+1;
+	}
+	if(leftlen>rightlen)
+		return leftlen;
+	return rightlen;
+}
+func LeafNumbers(node,count)
+{
+	if(node)
+	{	
+		if(node.lchild==null && node.rchild==null)
+			count[0]++;
+		LeafNumbers(node.lchild,count);
+		LeafNumbers(node.rchild,count);	
+	}
+} 
+
+main()
+{
+	binTree=CreateTree();
+    print("先序遍历结果：");
+    PreOrderTraverse(binTree);
+    print("中序遍历结果：");
+    InOrderTraverse(binTree);
+    print("后序遍历结果：");
+    PostOrderTraverse(binTree);
+    
+    count=[0];
+    NodeNumbers(binTree,count);
+    print("二叉树结点个数:",count[0]);
+    count[0]=0;
+    LeafNumbers(binTree,count);
+    print("叶子结点个数:",count[0]);
+    len=TreeDepth(binTree);
+    print("二叉树深度:",len);
+}

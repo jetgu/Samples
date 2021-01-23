@@ -1,0 +1,47 @@
+class CSocket()
+{
+	self.sock=null;
+
+	func listen(port)
+	{
+		self.sock=_fun("sock_listen",port);
+		return self.sock;
+	}
+	func accept()
+	{
+		sock= _fun("sock_accept",self.sock);
+		client_sock=CSocket();
+		client_sock.sock=sock;
+		return client_sock;
+	}
+	func send(data)
+	{
+		return _fun("sock_send",self.sock,data);
+	}
+	func recv(size)
+	{
+		return _fun("sock_recv",self.sock,size);
+	}
+	func remote_addr()
+	{
+		return _fun("sock_remoteaddr",self.sock);
+	}
+	func connect(host,port)
+	{
+		self.sock=_fun("sock_connect",host,port);
+		return self.sock;
+	}
+	func close()
+	{
+		_fun("sock_close",self.sock);
+ 	}
+ 	func shutdown(how)
+	{
+		//how has 3 options (0:shutdown receive, 1:shutdown send, 2:shutdown both)
+		_fun("sock_shutdown",self.sock,how);
+ 	}   
+ 	func timeout(seconds)
+	{
+		_fun("sock_timeout",self.sock,seconds);
+ 	}    
+}

@@ -1,0 +1,446 @@
+/*
+这是一个类似shadowsocks的可以用于“翻墙”的Http代理服务器，分为本地端和远程端。
+本地端（http_proxy_local.si）运行于墙内，需要翻墙的电脑和手机在代理设置里填入本地端的IP地址和端口
+远程端（http_proxy_remote.si）运行于墙外的VPS上，Linux和Windows都可以，具体参考同一目录下的Proxy.pdf文件
+*/
+
+#include "../include/socket.si"
+#include "../include/common.si"
+#include "http_proxy_common.si"
+
+REMOTE_HOST="35.229.140.71";//这里填入墙外VPS的IP地址
+REMOTE_PORT=8090;//墙外远程端程序运行的端口号
+
+LOCAL_PORT=8088;
+
+PROXY_AUTH=false;//代理是否需要认证
+AUTH_USER_PASS="test:test123";//认证缺省的用户名和密码
+
+_authIPs={};
+
+class CIpFunc()
+{
+	self.ip_ranges=null;
+    self.log=null;
+    self.domain_map={};
+    self.lock=_createlock();
+    
+    func SetLog(log)
+    {
+		self.log=log;
+    }
+    func Log(str)
+    {
+		if(self.log)
+			self.log.Log(str);
+    }
+    func GetIpRanges()
+    {
+        curdir=_fun("curdir");
+        if(curdir.size()==0)
+			curdir="./";
+		filename=curdir+"CN_ipranges.txt";
+    
+		file=CFile();
+		if(file.Open(filename,"rb"))
+		{
+			buff=file.ReadAll();
+			self.ip_ranges=buff.split("\n");
+			file.Close();
+		}
+    }
+	func IpToInt(ip)
+	{
+		nums=ip.split(".");
+		if(nums.size()!=4)
+			return -1;
+		value=_int(nums[0])*255*255*255+_int(nums[1])*255*255+_int(nums[2])*255+_int(nums[3]);
+		return value;
+	}    
+	func IsChinaIp(ip)
+	{
+		if(!self.ip_ranges)
+			return false;
+		ip=self.IpToInt(ip);
+		if(ip<0)
+			return false;
+			
+		for(i=0;i<self.ip_ranges.size();i++)
+		{
+			ips=self.ip_ranges[i].split(" - ");
+			if(!ips)
+				continue;
+			ip1=self.IpToInt(ips[0]);
+			ip2=self.IpToInt(ips[1]);
+			if(ip>=ip1&&ip<=ip2)
+				return true;
+		}
+		return false;
+	}
+	
+	func GetIpFromDomain(domain,key)
+	{
+		ip_addr=self.domain_map.find(domain);
+		if(ip_addr)
+			return ip_addr;
+		
+		remote_sock=CSocket();
+		if(remote_sock.connect(REMOTE_HOST,REMOTE_PORT))
+		{
+			header=sprintf("%c",254);//0xfe
+			remote_sock.send(header);
+			remote_sock.send(key);
+			data=sprintf("%s",domain);
+			data=Encrypt(data,key);
+			len=sprintf("%c",data.size());
+			remote_sock.send(len);
+			remote_sock.send(data);
+
+			len=remote_sock.recv(1);
+			if(len.size()==1)
+			{
+				len=_int(sprintf("%d",len));
+				if(len>0)
+				{
+					buff=read_all(remote_sock,len);
+					if(buff.size()==len)
+					{
+					   ip_addr=Encrypt(buff,key);
+					   remote_sock.close();
+					   self.Log(sprintf("domain resolved: %s",domain));
+                       _lock(self.lock);
+					   self.domain_map[domain] = ip_addr;
+                       _unlock(self.lock);
+					   return ip_addr;
+					}
+				}
+			}
+			remote_sock.close();	
+			self.Log(sprintf("domain resolve error: %s",domain));
+		}
+		else
+			self.Log("Connect to remote proxy error");
+
+		return null;
+	}    
+}
+
+class CProxy(server,client)
+{
+	self.server=server;
+	self.client=client;
+	self.method=null;
+	self.recv="";
+	
+    func Log(str)
+    {
+		self.server.log.Log(str);
+    }
+    func CheckAuth(auth,ip)
+    {
+		if(!PROXY_AUTH)
+			return true;
+        if(_authIPs.find(ip))
+			return true;
+        if(auth==AUTH_USER_PASS)
+        {
+			_authIPs[ip]=true;
+			return true;
+        }
+            
+		return false;
+    }
+    
+	func Process(recv)
+	{
+		if(self.method==null)
+		{
+			self.recv=self.recv+recv;
+			pos=self.recv.find("\r\n\r\n");
+			if(pos<0)
+				return false;
+			
+			arr_header=self.recv.split("\r\n");
+			if(arr_header.size()==0)
+				return false;
+			
+			client_addr=self.client.remote_addr();
+
+			url="";
+			host="";
+			port=80;
+            auth="";
+
+			item=arr_header[0].split(" ");
+			if(item.size()>1)
+			{
+				url=item[1];
+
+				self.method=item[0];
+				if(self.method=="CONNECT")
+				{
+					host=item[1];
+					port=443;
+					pos=host.rfind(":");
+					if(pos>0)
+					{
+                    	port=_int(host.substr(pos+1));
+                        host=host.substr(0,pos);
+					}
+				}
+				else
+				{
+					for(i=1;i<arr_header.size();i++)
+					{
+						item = arr_header[i].split(": ");
+						if(item.size()>1)
+						{
+							if(item[0]=="Host")
+							{
+								host=item[1];
+								pos=host.rfind(":");
+								if(pos>0)
+								{
+									port=_int(host.substr(pos+1));
+									host=host.substr(0,pos);
+                                    break;
+								}
+							}
+						 }
+					 }
+
+				}
+                
+				for(i=1;i<arr_header.size();i++)
+				{
+ 					item = arr_header[i].split(": ");
+					if(item[0]=="Proxy-Authorization" || item[0]=="proxy-authorization")
+					{
+						auth = item[1];
+                        break;
+					}
+				}
+				if(!self.CheckAuth(auth,client_addr[0]))
+				{
+                    self.Log(sprintf("auth error (%s)",client_addr[0]));
+					self.client.send("HTTP/1.0 407 Proxy authorization required\r\nProxy-Authenticate: Basic realm=\"HTTP Authorization\"\r\nCache-Control: no-cache\r\n\r\nUsername/Pass error");
+					self.client.close();                
+					return true;
+				}
+                           
+			}
+			
+
+            key=_fun("time_rand")%127;
+            key=sprintf("%c",key);
+            
+            ipaddr=self.server.IpFunc.GetIpFromDomain(host,key);
+            if(ipaddr)
+            {
+				if(self.server.IpFunc.IsChinaIp(ipaddr))
+                {
+					//connect directly
+					self.Log(sprintf("remote %s %s (%s)",self.method,url,client_addr[0]));
+					if(self.method=="CONNECT")
+					{
+						remote_sock=CSocket();
+						if(remote_sock.connect(host,port))
+						{
+							_createthread(sock_readwrite,remote_sock,self.client,null);
+							_createthread(sock_readwrite,self.client,remote_sock,null);
+							self.client.send("HTTP/1.0 200 Connection established\r\n\r\n");
+							return true;
+						}
+					}
+					else
+					{
+						cmd_host_port = self.method+" http://"+host;
+						if (port != 80)
+							cmd_host_port += ":"+_str(port);
+						cmd_host_post_new = self.method+" ";   
+						self.recv = self.recv.replace(cmd_host_port,cmd_host_post_new);
+						self.recv = self.recv.replace("HTTP/1.1","HTTP/1.0");
+					
+						remote_sock=CSocket();
+						if(remote_sock.connect(host,port))
+						{
+							remote_sock.send(self.recv);
+							_createthread(sock_readwrite,self.client,remote_sock,null);
+							_createthread(sock_readwrite,remote_sock,self.client,null);
+							return true;
+						}
+					}
+					self.client.close();				
+					return true;
+                }
+                
+				host=ipaddr;
+            }
+
+			//connect to remote proxy
+			self.Log(sprintf("remote %s %s (%s)",self.method,url,client_addr[0]));
+			if(self.method=="CONNECT")
+			{
+				remote_sock=CSocket();
+				if(remote_sock.connect(REMOTE_HOST,REMOTE_PORT))
+				{
+ 					header=sprintf("%c",255);//0xff
+					remote_sock.send(header);
+                    remote_sock.send(key);
+                    data=sprintf("%s:%d",host,port);
+                    data=Encrypt(data,key);
+                    len=sprintf("%c",data.size());
+                    remote_sock.send(len);
+                    remote_sock.send(data);
+                
+					_createthread(sock_readwrite,remote_sock,self.client,key);
+					_createthread(sock_readwrite,self.client,remote_sock,key);
+                    self.client.send("HTTP/1.0 200 Connection established\r\n\r\n");
+					return true;
+				}
+			}
+			else
+			{
+				cmd_host_port = self.method+" http://"+host;
+				if (port != 80)
+					cmd_host_port += ":"+_str(port);
+				cmd_host_post_new = self.method+" ";   
+				self.recv = self.recv.replace(cmd_host_port,cmd_host_post_new);
+
+				//self.recv = self.recv.replace("Proxy-Connection:","Connection:");
+				//self.recv = self.recv.replace("Connection: keep-alive\r\n","");
+				//self.recv = self.recv.replace("Connection: keep-Alive\r\n","");
+				self.recv = self.recv.replace("HTTP/1.1","HTTP/1.0");
+			
+				remote_sock=CSocket();
+				if(remote_sock.connect(REMOTE_HOST,REMOTE_PORT))
+				{
+					header=sprintf("%c",255);//0xff
+					remote_sock.send(header);
+                    remote_sock.send(key);
+                    data=sprintf("%s:%d",host,port);
+                    data=Encrypt(data,key);
+                    len=sprintf("%c",data.size());
+                    remote_sock.send(len);
+                    remote_sock.send(data);
+
+ 					remote_sock.send(Encrypt(self.recv,key));
+					_createthread(sock_readwrite,self.client,remote_sock,key);
+					_createthread(sock_readwrite,remote_sock,self.client,key);
+					return true;
+				}
+			}
+
+			self.client.close();
+			self.Log("remote connect error.");				
+			return true;
+		}
+		else
+		{
+			self.recv=self.recv+recv;
+		}
+		
+		return false;
+	}
+}
+
+func process_client(server,client)
+{
+	proxy = CProxy(server,client);
+	
+    buff_size=4096;
+	recv=client.recv(buff_size);
+	while(recv.size()>0)
+	{
+		if(proxy.Process(recv))
+			break;
+		
+		recv=client.recv(buff_size);
+	}
+}
+
+class CProxyServer(port)
+{
+	self.sock=null;
+	self.port=port;
+	self.bRun=false;
+    self.log=CLogFile();
+    //self.log.OpenFile("log.txt");
+	self.IpFunc=CIpFunc();
+    self.IpFunc.SetLog(self.log);
+    self.IpFunc.GetIpRanges();
+
+	func run()
+	{
+		self.log.Log(sprintf("http proxy server is starting to run on port %d",self.port));
+		self.sock=CSocket();
+		if(!self.sock.listen(self.port))
+		{
+			self.log.Log(sprintf("error running on port",self.port));
+			return;
+		}
+			
+		self.bRun=true;
+		while(self.bRun)
+		{
+			client_sock= self.sock.accept();
+			_createthread(process_client,self,client_sock);
+		}
+	}
+	func stop()
+	{
+		self.bRun=false;
+		if(self.sock)
+			self.sock.close();
+	}
+}
+
+func run_server(server)
+{
+	server.run();
+}
+func encode_password()
+{
+	global AUTH_USER_PASS;
+    
+	curdir=_fun("curdir");
+	if(curdir.size()==0)
+		curdir="./";
+	comm=CCommon(curdir);
+    str=comm.base64_encode(AUTH_USER_PASS);
+    if(str==null)
+    {
+		AUTH_USER_PASS="Basic dGVzdDp0ZXN0MTIz";//test:test123
+        print("cannot encode user&password, will use default user:password (test:test123) for Auth.");
+    }
+    else
+		AUTH_USER_PASS="Basic "+str;
+	//print(AUTH_USER_PASS);
+    comm.Free();
+
+}
+main()
+{
+	encode_password();
+    
+	if(_getargv().size()>=4)
+    {
+		LOCAL_PORT=_int(_getargv()[1]);
+ 		REMOTE_HOST=_getargv()[2];
+ 		REMOTE_PORT=_int(_getargv()[3]);
+    }
+    
+	server=CProxyServer(LOCAL_PORT);
+	_createthread(run_server,server);
+	
+	while(true)
+	{
+		str=_input();
+		if(str[0]=="y" || str[0]=="Y")
+		{
+			server.stop();
+			break;
+		}
+		print("Do you want to stop the server? Y or N");
+	}
+}

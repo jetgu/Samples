@@ -1,0 +1,107 @@
+//一个用链表实现的队列类
+class Node()
+{
+	self.data=null;
+	self.next=null;
+}
+class ListQueue()
+{
+	self.front=null;
+	self.rear=null;
+	self.size=0;
+	
+    func Empty()
+	{
+		return (self.size == 0);
+	}
+
+	func Push(data)
+	{
+		node=Node();	
+		node.data = data;
+		
+		if(self.Empty())
+		{
+			self.front = node;
+			self.rear = node;
+		}
+		else
+		{            
+			self.rear.next = node;
+			self.rear = node;
+		}
+		self.size++;
+	}
+    
+	func Pop()
+	{
+		if(self.Empty())
+		{
+			return null;
+		}
+		data = self.front.data;
+		self.front = self.front.next;
+		self.size--;
+
+		return data;
+	}
+	 
+	func Destroy()
+	{
+		while(self.front)
+		{
+			self.front = self.front.next;
+			self.size--;
+		}
+	}        
+}
+
+//一个用Silk数组实现的队列类
+class ArrayQueue()
+{
+	self.Data=[];
+	
+    func Empty()
+	{
+		return (self.Data.size() == 0);
+	}
+
+	func Push(data)
+	{
+		self.Data.append(data);
+	}
+    
+	func Pop()
+	{
+		if(self.Empty())
+		{
+			return null;
+		}
+		data = self.Data[0];
+		self.Data.erase(0);
+
+		return data;
+	}
+	 
+	func Destroy()
+	{
+		self.Data.clear();
+	}        
+}
+
+main()
+{
+	//queue=ListQueue();
+	queue=ArrayQueue();
+	for(i=0; i<25; i++)
+	{
+		queue.Push(i);
+	}
+    //queue.Destroy();
+	while(!queue.Empty())
+	{
+		i=queue.Pop();
+		printf("%d ", i);
+	}
+
+}

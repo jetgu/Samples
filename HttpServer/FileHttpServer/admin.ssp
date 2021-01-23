@@ -1,0 +1,304 @@
+<?silk
+	#include "../../include/common.si"
+	#include "../../include/sqlite.si"
+    #include "functions.ssp"
+
+    func FormatLevel(level,bUser=true)
+    {
+		if(bUser)
+        {
+			if(level=="1")
+				return "Admin";
+			if(level=="2")
+				return "User";
+        }
+        else
+        {
+			if(level=="1")
+				return "Download";
+			if(level=="2")
+				return "Upload";
+        }
+        return "None";    
+    }
+    func GetUsers(curdir,users)
+    {
+        
+		db=CSqlite(curdir);
+		if(db.Open(curdir+"FileHttpServer/admin.db"))
+		{
+			sql=sprintf("select * from user ");
+            result=db.Query(sql);
+			if(result)
+			{
+				count=db.RecordNum(result);
+                for(i=1;i<=count;i++)
+                {
+					item={};
+					item["name"]=GetField(db,result,i,"name");
+					item["email"]=GetField(db,result,i,"email");
+					item["desc"]=GetField(db,result,i,"description");
+					item["level"]=FormatLevel(GetField(db,result,i,"level"));
+					item["time"]=GetField(db,result,i,"createtime");
+                    users.append(item);
+                }
+			}
+			db.Query_Free(result);
+		}
+		db.Close();
+        
+    }
+    func GetFolders(curdir,folders)
+    {
+        
+		db=CSqlite(curdir);
+		if(db.Open(curdir+"FileHttpServer/admin.db"))
+		{
+			sql=sprintf("select * from folder ");
+            result=db.Query(sql);
+			if(result)
+			{
+				count=db.RecordNum(result);
+                for(i=1;i<=count;i++)
+                {
+					item={};
+					item["name"]=GetField(db,result,i,"name");
+					item["path"]=GetField(db,result,i,"path");
+					item["desc"]=GetField(db,result,i,"description");
+					item["level"]=FormatLevel(GetField(db,result,i,"level"),false);
+					item["time"]=GetField(db,result,i,"createtime");
+                    folders.append(item);
+                }
+			}
+			db.Query_Free(result);
+		}
+		db.Close();
+        
+    }
+    
+	args=_getargv()[0]; 
+	env=args["ENV"]; 
+	post=args["POST"]; 
+	globals=args["GLOBALS"]; 
+    curdir=globals["curdir"];
+
+	query=env["QUERY_DICT"];
+    cookies=GetCookies(args);
+
+    nRet=FindUser(args,cookies);
+    if(nRet==-1)
+    {
+		Redirect(args,"/login.ssp");
+        return "";
+    }
+    if(nRet==1)
+    {
+		users=[];
+		GetUsers(curdir,users);
+		folders=[];
+		GetFolders(curdir,folders);
+    }
+  
+    
+
+?>
+
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="gb2312"> 
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>Silk File Server </title>
+	<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css">  
+	<script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+	<script language="JavaScript">
+	function deleteUser(user)
+	{
+		if(confirm("Do you really want to delete the user '"+user+"' ?"))
+			window.location.href="user_delete.ssp?user="+user;
+	}		
+	function deleteFolder(folder)
+	{
+		if(confirm("Do you really want to delete the folder '"+folder+"' ?"))
+			window.location.href="folder_delete.ssp?folder="+folder;
+	}		
+	</script>    
+</head>
+<body>
+
+<nav class="navbar navbar-default" role="navigation">
+	<div class="container-fluid"> 
+	<div class="navbar-header">
+		<button type="button" class="navbar-toggle" data-toggle="collapse"
+				data-target="#example-navbar-collapse">
+			<span class="sr-only">Navigation</span>
+			<span class="icon-bar"></span>
+			<span class="icon-bar"></span>
+			<span class="icon-bar"></span>
+		</button>
+		<a class="navbar-brand" href="#">Silk File Server</a>
+	</div>
+	<div class="collapse navbar-collapse" id="example-navbar-collapse">
+		<ul class="nav navbar-nav">
+		  <li><a href="/"><span class="glyphicon glyphicon-home"></span> Home</a></li>
+		  <li><a href="/login.ssp"><span class="glyphicon glyphicon-log-in"></span> Login</a></li>
+
+		</ul>
+	</div>
+	</div>
+</nav>
+
+
+<div class="container-fluid">
+
+<div class="panel panel-primary">
+	<div class="panel-heading">
+		<h3 class="panel-title" align="center">Administration</h3>
+	</div>
+	<div class="panel-body">
+
+<?silk 
+if(nRet==0)
+{
+?>
+    <div id="myAlert" class="alert alert-warning" align="center">
+		<a href="#" class="close" data-dismiss="alert">&times;</a>
+		<strong><?silk response.write("No permission"); ?></strong>
+	</div>
+	<div class="panel panel-default" align="center"> 
+		<div class="panel-body">
+		<a href='/login.ssp'><strong>Login</strong></a>
+		</div>
+	</div>
+
+<?silk 
+}
+else
+{
+?>
+
+	<div class="table-responsive" style="height:350px;overflow: auto;">
+		<table class="table">
+			<caption>Users</caption>
+			<thead>
+				<tr>
+					<th>User</th>
+					<th>Email</th>
+					<th>Description</th>
+					<th>Create time</th>
+					<th>Permission</th>
+					<th>Option</th>
+				</tr>
+			</thead>
+			<tbody>
+			
+			<?silk
+				for(i=0;i<users.size();i++)
+				{
+			?>
+				<tr>
+					<?silk
+						response.write(sprintf("<td>%s</td>",users[i]["name"]));
+						response.write(sprintf("<td>%s</td>",users[i]["email"]));
+						response.write(sprintf("<td>%s</td>",users[i]["desc"]));
+						response.write(sprintf("<td>%s</td>",users[i]["time"]));
+						response.write(sprintf("<td>%s</td>",users[i]["level"]));
+					?>
+					<td>
+					  <div class="btn-group">
+						<button type="button" class="btn btn-default">Menu</button>
+						<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+						  <span class="caret"></span>
+						</button>
+						<ul class="dropdown-menu" role="menu">
+						  <li><a href="<?silk response.write(sprintf("user_edit.ssp?user=%s",users[i]["name"])); ?>">Edit</a></li>
+						  <li><a href="javascript:;" onclick="<?silk response.write(sprintf("deleteUser('%s')",users[i]["name"])); ?>">Delete</a></li>
+						</ul>
+					  </div>
+					</td>
+				</tr>
+			<?silk
+			   }
+			?>		
+				
+			</tbody>
+		</table>
+	</div> 
+
+	<div class="panel panel-default"> 
+	<div class="panel-body">
+	<a href='/user_add.ssp'><strong>Add user</strong></a>
+	</div>
+	</div>
+
+	<br> 	    
+	<div class="table-responsive" style="height:300px;overflow: auto;">
+		<table class="table">
+			<caption>Virtual folders</caption>
+			<thead>
+				<tr>
+					<th>Name</th>
+					<th>Path</th>
+					<th>Description</th>
+					<th>Create time</th>
+                    <th>Permission</th>
+					<th>Option</th>
+				</tr>
+			</thead>
+			<tbody>
+
+			<?silk
+				for(i=0;i<folders.size();i++)
+				{
+			?>
+				<tr>
+					<?silk
+						response.write(sprintf("<td>%s</td>",folders[i]["name"]));
+						response.write(sprintf("<td>%s</td>",folders[i]["path"]));
+						response.write(sprintf("<td>%s</td>",folders[i]["desc"]));
+						response.write(sprintf("<td>%s</td>",folders[i]["time"]));
+						response.write(sprintf("<td>%s</td>",folders[i]["level"]));
+					?>
+                
+					<td>
+					  <div class="btn-group">
+						<button type="button" class="btn btn-default">Menu</button>
+						<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+						  <span class="caret"></span>
+						</button>
+						<ul class="dropdown-menu" role="menu">
+						  <li><a href="<?silk response.write(sprintf("folder_edit.ssp?folder=%s",folders[i]["name"])); ?>">Edit</a></li>
+						  <li><a href="javascript:;" onclick="<?silk response.write(sprintf("deleteFolder('%s')",folders[i]["name"])); ?>">Delete</a></li>
+						</ul>
+					  </div>
+					</td>
+				</tr>
+			<?silk
+			   }
+			?>		
+                
+			</tbody>
+		</table>
+	</div>  	    
+
+	<div class="panel panel-default"> 
+	<div class="panel-body">
+	<a href='/folder_add.ssp'><strong>Add virtual folder</strong></a>
+	</div>
+	</div>
+
+<?silk 
+}
+?>
+
+
+
+	</div>
+</div>
+
+</div>
+
+</body>
+</html>

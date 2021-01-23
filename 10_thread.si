@@ -1,0 +1,21 @@
+_count=0;
+func threadTest(i,lock) //线程函数
+{
+	global _count;
+    
+    _lock(lock); //在更新共享资源_count前上锁，则其它线程将无法更改_count
+   
+    _count++;
+    print("id:",i,"count:",_count);
+   
+    _unlock(lock); //更新完毕，释放锁, 其它线程可继续更改_count
+}
+main()
+{
+    lock=_createlock();//创建锁
+    //创建10个线程
+    for(i=0;i<10;i++)
+        _createthread(threadTest,i,lock);
+        
+    _input();//暂停一下，不然可能线程还没有运行，这里程序已经执行完毕而退出了
+}

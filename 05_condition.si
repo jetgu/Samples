@@ -1,0 +1,30 @@
+func conditon_test(i)
+{
+	if(i==0) //条件判断1
+	{
+	  print("i=0");
+	}
+	else if(i==10) //条件判断2
+	{
+	  print("i=10");
+	}
+	else if(i==100) //条件判断3
+	{
+	  print("i=100");
+	}
+	else //以上条件都不满足
+	{
+	  print("not found");
+	}
+    
+	//继续执行的语句
+	print("end");
+
+}
+main()
+{
+    printf("请输入一个整数并按回车键: ");
+    number=_int(_input());
+    conditon_test(number);  
+	
+}

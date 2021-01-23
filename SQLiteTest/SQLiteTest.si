@@ -1,0 +1,60 @@
+#include "../include/sqlite.si"
+
+func sqliteTest()
+{
+	//if SilkSQLite64.dll is not in current directory, you need to pass the path of dll here
+	//db=CSqlite(sqliteDllPath);
+	db=CSqlite();
+	if(db.Open(db.get_curdir()+"admin.db"))
+    {
+		sql=sprintf("select * from user ");
+		res=db.Query(sql);
+        if(res)
+        {
+			nCount=db.RecordNum(res)+1;//the first record is field names
+            nField=db.FieldNum(res);
+            for(i=0;i<nCount;i++)
+            {
+				str="";
+				for(j=0;j<nField;j++)
+				{
+					value=db.GetByFieldNo(res,i,j);
+					str+=value+", ";
+				}
+                print(str);
+            }
+            db.Query_Free(res);
+        }
+        db.Close();	
+    }
+}
+
+func sqliteUpdate(username,password,email,phone,description,level)
+{
+	//if SilkSQLite64.dll is not in current directory, you need to pass the path of dll here
+	//db=CSqlite(sqliteDllPath);
+	db=CSqlite();
+	if(db.Open(db.get_curdir()+"admin.db"))
+    {
+		sql=sprintf("select * from user where username='%s' ",username);
+		res=db.Query(sql);
+        if(res)
+        {
+			sql=sprintf("Update user set email='%s',description='%s',password='%s',level=%d where name='%s'",email,description,password,level,username);
+            result=db.Exec(sql);
+		}
+        else
+        {    
+			time=_fun("time_now")["time_str"];
+			sql=sprintf("INSERT INTO user (name,password,email,phone,description,createtime,level) VALUES ('%s','%s','%s','%s','%s','%s',%d)",username,password,email,phone,description,time,level);
+			result=db.Exec(sql);
+		}
+        db.Close();	
+    }
+}
+
+main()
+{
+	sqliteTest();
+    //sqliteUpdate("Mike","pass123","mike@msn.com","13788888888","new user",2);
+}

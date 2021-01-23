@@ -1,0 +1,313 @@
+<?silk
+	#include "../../include/common.si"
+	#include "../../include/sqlite.si"
+    #include "functions.ssp"
+
+	func FormatSize(nSize)
+	{
+		str=_str(nSize);
+		ret="";
+		n=1;
+		m=0;
+		for(i=str.size()-1;i>=0;i--)
+		{
+			if(n%3==0 && i>0)
+			{
+				ret=","+str.substr(i,3)+ret;
+				m=i;
+			}
+			n++;
+		}
+		if(m>0)
+			ret=str.substr(0,m)+ret;
+		else
+			ret=str;
+		return ret;
+	}
+?>
+
+
+<?silk
+
+	args=_getargv()[0]; 
+	globals=args["GLOBALS"]; 
+	env=args["ENV"]; 
+	query=env["QUERY_DICT"];
+	curdir=globals["curdir"];
+
+    args["HEADER"]["Cache-Control"]="no-cache";
+
+	slash="\\";
+	if(_fun("os_platform").find("WIN")<0)
+		slash="/";
+	DirName="/";
+	bVirtualFolder=true;
+	results=[];
+    
+    cookies=GetCookies(args);
+    nRet=FindUser(args,cookies);
+    if(nRet==-1)
+    {
+		Redirect(args,"/login.ssp");
+        return "";
+    }
+    bAdmin=false;
+    if(nRet==1)
+    {
+		bAdmin=true;
+	}
+    
+    vfolders=globals.find("virtual_folders");
+    if(vfolders==null)
+    {
+		vfolders={};
+		LoadFolders(curdir,vfolders);
+        SaveFolders(args,vfolders);
+    }
+    //load the lib
+    comm=CCommon(globals["curdir"]);
+    
+    //get list
+    if(query.size()>0)
+    {
+		upload_enable=false;
+		bVirtualFolder=false;
+		
+		DirName=query.find("dir");
+		if(DirName)
+		{	
+			DirName=_fun("url_unescape",DirName);
+			DirName=DirName.replace("+"," ");
+            print(DirName);
+            
+			VirtualName=DirName;
+			pos=DirName.find(slash);
+            if(pos>0)
+				VirtualName=DirName.substr(0,pos);
+			folder=vfolders.find(VirtualName);
+            path=folder["path"];
+            pos=DirName.find(VirtualName);
+			path=DirName.replace(pos,VirtualName.size(),path);
+            
+            //print(path);
+			results=comm.dir_files(path);
+            
+            if(_int(folder["level"])==2)
+				upload_enable=true;
+		}
+    }
+    
+    
+?>
+
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="gb2312"> 
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>Silk File Server</title>
+	<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css">  
+	<script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+	<script language="JavaScript">
+	function deleteFile(path,file)
+	{
+ 		if(confirm("Do you really want to delete the file '"+file+"' ?"))
+			window.location.href="file_delete.ssp?file="+path;
+	}		
+	</script>        
+</head>
+<body>
+
+<nav class="navbar navbar-default" role="navigation">
+	<div class="container-fluid"> 
+	<div class="navbar-header">
+		<button type="button" class="navbar-toggle" data-toggle="collapse"
+				data-target="#example-navbar-collapse">
+			<span class="sr-only">Navigation</span>
+			<span class="icon-bar"></span>
+			<span class="icon-bar"></span>
+			<span class="icon-bar"></span>
+		</button>
+		<a class="navbar-brand" href="#">Silk File Server</a>
+	</div>
+	<div class="collapse navbar-collapse" id="example-navbar-collapse">
+		<ul class="nav navbar-nav">
+		  <li><a href="/"><span class="glyphicon glyphicon-home"></span> Home</a></li>
+		  <li><a href="/login.ssp"><span class="glyphicon glyphicon-log-in"></span> Login</a></li>
+<?silk
+	  if(bAdmin)
+		  response.write("<li><a href=\"/admin.ssp\"><span class=\"glyphicon glyphicon-list\"></span> Admin</a></li>");
+?>          
+		</ul>
+	</div>
+	</div>
+</nav>
+
+
+<div class="container-fluid">
+
+<div class="panel panel-primary">
+	<div class="panel-heading">
+		<h3 class="panel-title" align="center">File Explorer</h3>
+	</div>
+	<div class="panel-body">
+
+<?silk
+      
+      if(!bVirtualFolder)
+      {
+		  if(upload_enable)
+		  {
+			response.write("<div class=\"panel panel-default\"> <div class=\"panel-body\">");
+			buff=sprintf("<a href='/upload.ssp?dir=%s'><strong>Upload file</strong></a>",DirName);
+			response.write(buff);
+			response.write("</div></div>");
+		  }
+      
+		  path="<ul class=\"breadcrumb\">";
+		  path+="<li><a href=\"getlist.ssp\">..</a></li>";
+		  link="";
+		  items=DirName.split(slash);
+		  for(i=0;i<items.size();i++)
+		  {
+			if(link=="")
+				link=items[i];
+			else    
+				link+=slash+items[i];
+			path+=sprintf("<li><a href=\"getlist.ssp?dir=%s\">%s</a></li>",link,items[i]);
+		  }
+		  path+="</ul>";  
+		  response.write(path);
+      }
+      
+?>      
+<div class="table-responsive">
+	<table class="table  table-hover">
+		<thead>
+			<tr>
+				<th>Name</th>
+                <?silk 
+					if(bVirtualFolder)
+					{
+						response.write("<th>Description</th>");
+						response.write("<th>Date</th>");
+					}
+                    else
+                    {
+						response.write("<th>Size</th>");
+						response.write("<th>Date</th>");
+                    }
+                    if(bAdmin)
+						response.write("<th>Option</th>");
+                ?>
+			</tr>
+		</thead>
+		<tbody>
+        
+<?silk 
+
+  if(bVirtualFolder)//list virtual folders
+  {
+	  for(i=vfolders.begin();!vfolders.end(i);vfolders.next(i))
+	  {
+		folder=vfolders.get(i);
+		name=folder[0];
+        desc=folder[1]["desc"];
+		buff=sprintf("<tr><td><a href='/getlist.ssp?dir=%s'><strong>%s</strong></a></td><td>%s</td><td>%s</td></tr>",name,name,desc,"");
+		response.write(buff);
+	  }
+  }
+  else // list folders/files under virtual folders
+  {
+	  ParentDir="";
+	  pos=DirName.rfind(slash);
+      if(pos>0)
+		 ParentDir=DirName.substr(0,pos);
+      if(ParentDir=="")
+		 buff=sprintf("<tr><td><a href='/'><strong>%s</strong></a></td><td>%s</td><td>%s</td></tr>","..","","");
+      else   	
+		 buff=sprintf("<tr><td><a href='/getlist.ssp?dir=%s'><strong>%s</strong></a></td><td>%s</td><td>%s</td></tr>",ParentDir,"..","","");
+	  response.write(buff);
+      
+	  for(i=0;i<results.size();i++)
+	  {
+		fileInfo=results[i].split("|");
+		if(fileInfo[6]!="dir")
+			continue;
+		
+		array=fileInfo[0].split(slash);
+		filename="";
+		if(array.size()>0)
+			filename=array[array.size()-1];
+        response.write("<tr>");    
+		buff=sprintf("<td><a href='/getlist.ssp?dir=%s%s%s'><strong>%s</strong></a></td><td>%s</td><td>%s</td>",DirName,slash,filename,filename,"","");
+		response.write(buff);
+   		if(bAdmin)
+			response.write("<td></td>");
+        response.write("</tr>");
+	  }
+
+	  for(i=0;i<results.size();i++)
+	  {
+		fileInfo=results[i].split("|");
+		if(fileInfo[6]=="dir")
+			continue;
+		
+		array=fileInfo[0].split(slash);
+		filename="";
+		if(array.size()>0)
+			filename=array[array.size()-1];
+        nSize=_int(fileInfo[1])/1024;
+        if(nSize==0)
+			strSize=sprintf("%s byte",fileInfo[1]);
+        else
+        {
+			if(_int(fileInfo[1])%1024>0)
+				nSize++;
+			strSize=sprintf("%s KB",FormatSize(nSize));
+        }
+        date=comm.convert_time(_int(fileInfo[4]));  
+        strDate=date[0];
+        response.write("<tr>");
+        buff=sprintf("<td><a href='/getfile.ssp?file=%s%s%s'>%s</a></td><td>%s</td><td>%s</td>",DirName,slash,filename,filename,strSize,strDate);
+		response.write(buff);
+		if(bAdmin)
+        {
+					path=sprintf("%s%s%s",DirName,slash,filename);
+					path=EscapeStr(path);
+                    
+?>        
+					<td>
+					  <div class="btn-group">
+						<button type="button" class="btn btn-default">Menu</button>
+						<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+						  <span class="caret"></span>
+						</button>
+						<ul class="dropdown-menu" role="menu">
+							<li><a href="javascript:;" onclick="<?silk response.write(sprintf("deleteFile('%s','%s')",path,filename)); ?>">Delete</a></li>
+						</ul>
+					  </div>
+					</td>
+<?silk                    
+        }
+        
+        response.write("</tr>");
+	  }
+  
+  }
+  
+  comm.Free();
+?>                  
+		</tbody>
+	</table>
+</div>  	    
+
+	</div>
+</div>
+
+</div>
+
+</body>
+</html>

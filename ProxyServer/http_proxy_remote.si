@@ -1,0 +1,163 @@
+/*
+这是一个类似shadowsocks的可以用于“翻墙”的Http代理服务器，分为本地端和远程端。
+本地端（http_proxy_local.si）运行于墙内，需要翻墙的电脑和手机在代理设置里填入本地端的IP地址和端口
+远程端（http_proxy_remote.si）运行于墙外的VPS上，Linux和Windows都可以，具体参考同一目录下的Proxy.pdf文件
+*/
+
+#include "../include/socket.si"
+#include "http_proxy_common.si"
+
+LOCAL_PORT=8090;
+
+func process_client(server,client)
+{
+  	recv=client.recv(1);
+    if(recv.size()==1)
+    {
+		header=sprintf("%c",255);//0xff
+		if(recv==header)//exchange data
+        {
+			key=client.recv(1);
+            if(key.size()<=0)
+            {
+				client.close();
+                return;
+            }
+            
+ 			len=client.recv(1);
+            if(len.size()==1)
+            {
+				len=_int(sprintf("%d",len));
+ 				if(len<=0)
+                {
+					client.close();
+					return;
+                }
+               
+				buff=read_all(client,len);
+				if(buff.size()!=len)
+                {
+					client.close();
+					return;
+                }
+                host_port=Encrypt(buff,key);
+                arr=host_port.split(":");
+                if(arr.size()!=2)
+                {
+					client.close();
+					return;
+                }
+                server.log.Log(host_port);
+                
+                host=arr[0];
+                port=_int(arr[1]);
+                remote_sock=CSocket();
+				if(remote_sock.connect(host,port))
+                {
+					_createthread(sock_readwrite,client,remote_sock,key);
+					_createthread(sock_readwrite,remote_sock,client,key);
+                    return;
+                }
+                else
+					server.log.Log(sprintf("connect to %s error",host));
+				
+            }
+        
+        }
+		
+        header=sprintf("%c",254);//0xfe
+		if(recv==header)//resolve domain
+        {
+			key=client.recv(1);
+            if(key.size()<=0)
+            {
+				client.close();
+                return;
+            }
+            
+ 			len=client.recv(1);
+            if(len.size()==1)
+            {
+				len=_int(sprintf("%d",len));
+ 				if(len<=0)
+                {
+					server.log.Log("domain length error");
+					client.close();
+					return;
+                }
+               
+				buff=read_all(client,len);
+				if(buff.size()!=len)
+                {
+					client.close();
+					return;
+                }
+                
+                domain=Encrypt(buff,key);
+ 				iplist=_fun("sock_ipaddr",domain);
+                if(iplist)
+                {
+					if(iplist.size()>0)
+                    {
+						server.log.Log(sprintf("domain resolved: %s, %s",domain,iplist[0]));
+						len=sprintf("%c",iplist[0].size());
+						client.send(len);
+						client.send(Encrypt(iplist[0],key));
+                        client.close();
+                        return;
+                    }
+                }
+                len=sprintf("%c",0);
+                client.send(len);
+ 				
+            }
+        
+        }
+        
+    }
+	client.close();
+}
+
+class CProxyServer(port)
+{
+	self.sock=null;
+	self.port=port;
+	self.bRun=false;
+    self.log=CLogFile();
+    //self.log.OpenFile("remote_log.txt");
+
+	func run()
+	{
+		self.log.Log(sprintf("http remote proxy server is starting to run on port %d",self.port));
+		self.sock=CSocket();
+		if(!self.sock.listen(self.port))
+		{
+			self.log.Log(sprintf("error running on port %d",self.port));
+			return;
+		}
+			
+		self.bRun=true;
+		while(self.bRun)
+		{
+			client_sock= self.sock.accept();
+			_createthread(process_client,self,client_sock);
+		}
+	}
+	func stop()
+	{
+		self.bRun=false;
+		if(self.sock)
+			self.sock.close();
+	}
+}
+
+main()
+{
+	if(_getargv().size()>=2)
+    {
+		LOCAL_PORT=_int(_getargv()[1]);
+    }
+
+	server=CProxyServer(LOCAL_PORT);
+    server.run();
+}

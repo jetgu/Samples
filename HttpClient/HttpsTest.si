@@ -1,0 +1,99 @@
+#include "./HttpsLib.si"
+
+func get(url)
+{
+	https=CHttpsLib(_fun("curdir"));//set the path of the Dll(HttpsLib.dll)
+    ret=https.get(url);
+    if(ret)
+    {
+		print(ret.status_code);
+		print(ret.header);
+		print(ret.text);
+    }
+	https.Free();
+}
+func download(url,file_path)
+{
+	https=CHttpsLib(_fun("curdir"));//set the path of the Dll(HttpsLib.dll)
+    ret=https.download(url,file_path);
+    if(ret)
+    {
+		if(ret.status_code==200)
+			print("file downloaded ok.");
+    }
+	https.Free();
+}
+func post(url,data)
+{
+	https=CHttpsLib(_fun("curdir"));//set the path of the Dll(HttpsLib.dll)
+    ret=https.post(url,data);
+    if(ret)
+    {
+		print(ret.text);
+    }
+	https.Free();
+}
+func test_header(url,header)
+{
+	https=CHttpsLib(_fun("curdir"));//set the path of the Dll(HttpsLib.dll)
+    ret=https.get(url,header);//get with additional header
+    //ret=https.post(url,data,header);//post with additional header
+    if(ret)
+    {
+		print(ret.text);
+    }
+	https.Free();
+}
+func test_proxy(url,proxy)
+{
+	https=CHttpsLib(_fun("curdir"));//set the path of the Dll(HttpsLib.dll)
+    header=null;
+    timeout=20000;//timeout for connection, 20 seconds
+    ret=https.get(url,header,timeout,proxy);//get through proxy server
+    if(ret)
+    {
+		print(ret.text);
+    }
+	https.Free();
+}
+
+
+func session()
+{
+	//The session will be kept always during multiple request/response interactions
+    //调用HttpsLib期间，session（cookies，登录信息等）将一直保持，如果要结束session，用end_session函数。
+	https=CHttpsLib(_fun("curdir"));
+    data={};
+    data["username"]="admin";
+    data["password"]="test123";
+    ret=https.post("http://192.168.1.101:9001/login_process.ssp",data);//login
+	//https.end_session(true);//use this function to end the session
+    ret=https.get("http://192.168.1.101:9001/getlist.ssp");//after login, we can access other pages directly because the session is kept. 
+    if(ret)
+		print(ret.text);
+    
+    https.Free();    
+
+}
+
+main()
+{
+	get("https://3g.163.com");//HTTPS
+	get("http://www.baidu.com");//HTTP is also supported
+	
+    //download("https://3g.163.com","d:\\page.txt");//download the webpage and save it on d:\
+	
+    data={"username":"user1","password":"123456"};
+    post("https://getman.cn/echo",data);//POST testing
+    
+	header={
+    "User-Agent":"Mozilla/5.0",
+    "TestField":"This is a Hello from Silk"
+    };
+    test_header("https://getman.cn/echo",header);//header testing
+
+    proxy={"server":"10.30.84.132","port":8089};
+    test_proxy("https://baidu.com",proxy);//proxy testing
+
+   
+}

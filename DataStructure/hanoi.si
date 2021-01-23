@@ -1,0 +1,24 @@
+//递归演示汉诺塔移动过程
+
+func move(n, x, y)
+{
+	printf("第%d个盘子从 %c 到 %c\n",n,x,y);
+}
+
+func hanoi(n, A, B, C)
+{
+	if(n==1)
+		move(n,A,C);
+	else
+	{
+		hanoi(n-1,A,C,B);//将 n-1个盘子先放到B上
+		move(n,A,C);//将A上地剩下的一个盘移动到C上
+		hanoi(n-1,B,A,C);//将n-1个盘从B移动到C上
+	}
+}
+ 
+main()
+{
+	n=3;
+	hanoi(n,"A","B","C");
+}

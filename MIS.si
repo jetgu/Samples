@@ -1,0 +1,289 @@
+#include "./include/file.si"
+//a simple MIS
+//人员管理系统
+
+class CPerson()
+{
+    self.__id=-1;
+    self.__name="";
+    self.__age=0;
+    self.__phone=0;
+    self.__memo="";
+
+    func getId(){
+		return self.__id;
+    }
+    func setId(val){
+		self.__id=val;
+    }
+    func getName() {
+		return self.__name;
+    }
+    func setName(val){
+		self.__name=val;
+    }
+    func getAge() {
+		return self.__age;
+    }
+    func setAge(val){
+		self.__age=val;
+    }
+    func getPhone() {
+		return self.__phone;
+    }
+    func setPhone(val){
+		self.__phone=val;
+    }
+    func getMemo() {
+		return self.__memo;
+    }
+    func setMemo(val){
+		self.__memo=val;
+    }
+    
+}
+class CManagement()
+{
+    func add(dict,person){
+		if(dict.find(person.getId()))
+			return false;
+		dict.insert(person.getId(),person);
+		return true;
+    }
+ 
+    func delete(dict,id){
+		return dict.erase(id);
+	}
+ 
+    func update(dict,person){
+		if(dict.find(person.getId()))
+        {
+			dict[person.getId()]=person;
+            return true;
+        }
+		return false;
+    }
+ 
+    func find(dict,id){
+		return dict.find(id);	
+    }
+}
+
+class CDisplay()
+{
+	self.__manage=CManagement();
+ 
+    func Menu() {
+
+		_fun("system","cls");
+		printf("\n\t\t------------------\n");
+		printf("\t\t人员信息管理系统\n");
+		printf("\t\t------------------\n");
+		printf("\t\t1---录入人员信息\n");
+		printf("\t\t2---修改人员信息\n");
+		printf("\t\t3---查询人员信息\n");
+		printf("\t\t4---删除人员信息\n");
+		printf("\t\t5---显示人员信息\n");
+		printf("\t\t6---保存至文件\n");
+		printf("\t\t7---从文件导入\n");
+		printf("\t\t0---退出系统\n");
+		printf("\t\t------------------\n");
+		printf("\t\t请输入选项编号：");
+    }
+ 
+    func Show(dict) {
+		_fun("system","cls");
+		print("id    |name  	|age  |phone  |memo\n");
+		for(i=dict.begin();!dict.end(i);dict.next(i))
+        {
+			person=dict.get(i)[1];
+			printf("%d    	%s  	%d  	%d  	%s\n",person.getId(),person.getName(),person.getAge(),person.getPhone(),person.getMemo());
+        }
+	 
+		_fun("system","pause");
+		self.Menu();
+    }
+ 
+    func Add(dict) {
+	 
+		_fun("system","cls");
+	 
+		person=CPerson();
+		print("请输入\n");
+		print("id:");
+		id=_int(_input());
+		print("name:");
+		name=_input().rtrim();
+		print("age:");
+		age=_int(_input());
+		print("phone:");
+		phone=_int(_input());
+		print("memo:");
+		memo=_input().rtrim();
+	 
+		person.setId(id);
+		person.setName(name);
+		person.setAge(age);
+		person.setPhone(phone);
+		person.setMemo(memo);
+	 
+		if(self.__manage.add(dict,person))
+			print("加入成功！");
+	 
+		_fun("system","pause");
+		self.Menu();
+    }
+ 
+    func Find(dict) {
+    
+		_fun("system","cls");
+	 
+		print("请输入需要查找的id:");
+		id=_int(_input());
+		person=self.__manage.find(dict,id);
+        if(person)
+        {
+			_fun("system","cls");
+			print("id    |name  	|age  |phone  |memo\n");
+			printf("%d    	%s  	%d  	%d  	%s\n",person.getId(),person.getName(),person.getAge(),person.getPhone(),person.getMemo());
+            
+			_fun("system","pause");
+			self.Menu();
+        }
+    
+    }
+ 
+    func Delete(dict) {
+		_fun("system","cls");
+	 
+		print("请输入需要删除的id:");
+		id=_int(_input());
+        if(self.__manage.delete(dict,id))
+        {
+            print("删除成功！");
+			_fun("system","pause");
+			self.Menu();
+        }
+    
+    }
+ 
+    func Update(dict) {
+
+		person=CPerson();
+		print("请输入需要更新的id:");
+		id=_int(_input());
+		print("name:");
+		name=_input().rtrim();
+		print("age:");
+		age=_int(_input());
+		print("phone:");
+		phone=_int(_input());
+		print("memo:");
+		memo=_input().rtrim();
+	 
+		person.setId(id);
+		person.setName(name);
+		person.setAge(age);
+		person.setPhone(phone);
+		person.setMemo(memo);
+	 
+		if(self.__manage.update(dict,person))
+			print("更新成功！");
+	 
+		_fun("system","pause");
+		self.Menu();
+    }
+	func get_curdir()
+    {
+		curdir=_fun("curdir");
+        if(curdir=="")
+			curdir="./";
+        return curdir;    
+    }
+    func Save(dict) {
+		file=CFile();
+		ret=file.Open(self.get_curdir()+"MIS.txt","wb");
+		if(ret)
+		{
+			file.Write(sprintf("id,name,age,phone,memo\n"));
+			for(i=dict.begin();!dict.end(i);dict.next(i))
+			{
+				person=dict.get(i)[1];
+				buff=sprintf("%d,%s,%d,%d,%s\n",person.getId(),person.getName(),person.getAge(),person.getPhone(),person.getMemo());
+				file.Write(buff);	
+			}
+            print("保存成功！");
+		}
+		file.Close();
+
+		_fun("system","pause");
+		self.Menu();
+    }
+ 
+    func Load(dict) {
+		file=CFile();
+		ret=file.Open(self.get_curdir()+"MIS.txt","r");
+		if(ret)
+		{
+			dict.clear();
+			s=file.ReadAll();
+            rows=s.split("\n");
+            for(i=1;i<rows.size();i++)
+            {
+				cols=rows[i].split(",");
+                if(cols.size()<2)
+					continue;
+				id=_int(cols[0]);
+				name=cols[1];
+				age=_int(cols[2]);
+				phone=_int(cols[3]);
+				memo=cols[4];
+				person=CPerson();
+				person.setId(id);
+				person.setName(name);
+				person.setAge(age);
+				person.setPhone(phone);
+				person.setMemo(memo);
+                
+                dict.insert(id,person);
+            }
+            print("导入成功！");
+		}
+		file.Close();
+ 
+ 		_fun("system","pause");
+		self.Menu();
+    }
+
+}
+
+main()
+{
+	dict={};//create a dictionary for data management
+
+	display = CDisplay();
+	display.Menu();
+
+	type = _input()[0];
+    while (type!="0")
+    {
+        if (type=="1")
+            display.Add(dict);
+        else if(type=="2")
+            display.Update(dict);
+        else if(type=="3")
+            display.Find(dict);
+        else if (type=="4")
+            display.Delete(dict);
+        else if( type == "5")
+            display.Show(dict);
+        else if( type=="6")
+            display.Save(dict);
+        else if(type=="7")
+            display.Load(dict);
+        else
+            display.Menu();
+		type = _input()[0];
+    }
+
+}

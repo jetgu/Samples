@@ -1,0 +1,94 @@
+<?silk
+	#include "../../include/common.si"
+	#include "../../include/sqlite.si"
+    #include "functions.ssp"
+
+    func DeleteUser(args,curdir,username)
+    {
+		lock=args["GLOBALS"]["lock"];
+		_lock(lock);
+        
+        result=null;
+		db=CSqlite(curdir);
+		if(db.Open(curdir+"FileHttpServer/admin.db"))
+		{
+			username=EscapeStr(username);
+			sql=sprintf("delete from user where name='%s'",username);
+            print(sql);	
+            result=db.Exec(sql);
+		}
+		db.Close();
+        
+ 		_unlock(lock);
+        
+        return result;
+    }
+?>
+
+<?silk
+	args=_getargv()[0]; 
+	env=args["ENV"]; 
+	query=env["QUERY_DICT"];
+	globals=args["GLOBALS"]; 
+    curdir=globals["curdir"];
+	
+    cookies=GetCookies(args);
+	session=FindSession(args,cookies);
+    if(!session)
+    {
+		Redirect(args,"/login.ssp");
+        return "";
+    }
+    
+    username=query.find("user");
+	result=DeleteUser(args,curdir,username);
+	strResult="delete user error";
+	if(result)
+		strResult="delete user ok.";
+   
+?>
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="gb2312"> 
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>Silk File Server</title>
+	<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css">  
+	<script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+<body>
+
+<br><br>
+
+<div class="container-fluid">
+
+<div class="panel panel-primary">
+	<div class="panel-heading">
+		<h3 class="panel-title" align="center">Login</h3>
+	</div>
+	<div class="panel-body">
+	
+	<?silk
+    ?>
+    
+    <div id="myAlert" class="alert alert-warning" align="center">
+		<a href="#" class="close" data-dismiss="alert">&times;</a>
+		<strong><?silk response.write(strResult); ?></strong>
+	</div>
+	<div class="panel panel-default" align="center"> 
+		<div class="panel-body">
+		<a href='/admin.ssp'><strong>Admin</strong></a>
+		</div>
+	</div>
+
+
+    
+	</div>
+</div>
+</div>
+
+
+</body>
+</html>

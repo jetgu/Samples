@@ -1,0 +1,139 @@
+#include "file.si"
+class CJson(curdir=null)
+{
+	self.__lib=null;
+	self.curdir=curdir;
+
+    func get_curdir()
+	{
+        curdir=_fun("curdir");
+        if(curdir.size()==0)
+			curdir="./";
+		return curdir;
+	}
+    func get_filename()
+    {
+        filename="SilkCommonLib64.dll";//win64
+		if(_fun("os_platform").find("WIN")<0)
+			filename="SilkCommonLib";//linux
+		else if(_fun("os_platform").find("x64")<0)
+			filename="SilkCommonLib.dll";//win32
+		return filename;
+    }
+	
+	func Parse(json)
+	{
+		if(!self.curdir)
+			self.curdir=self.get_curdir();
+    
+		self.__lib=_loadlib(self.curdir+self.get_filename());
+        ret=_calllib(self.__lib,"json_parse",json);
+        if(_len(ret)>0)
+        {
+			code="main() { "+ret[0]+" return root;}";
+			ret=_fun("run",code,"");
+			return ret;
+        }
+		return null;	
+	}
+	func ParseFile(filename)
+	{
+		json=null;
+		f=CFile();
+		if(f.Open(filename,"r"))
+        {
+			json=f.ReadAll();
+			f.Close();
+        }
+        if(json==null)
+			return null;
+        
+		return self.Parse(json);
+	}
+
+	func __GenerateJson(name,obj,ret)
+    {
+		if(_type(obj)=="STRING")
+        {
+			if(name.size()==0)
+				ret[0]+=sprintf("\"%s\"",obj);
+            else
+				ret[0]+=sprintf("\"%s\":\"%s\"",name,obj);
+        }
+		else if(_type(obj)=="INT")
+        {
+			if(name.size()==0)
+				ret[0]+=sprintf("%d",obj);
+            else
+				ret[0]+=sprintf("\"%s\":%d",name,obj);
+        }
+		else if(_type(obj)=="FLOAT")
+        {
+			if(name.size()==0)
+				ret[0]+=sprintf("%f",obj);
+            else
+				ret[0]+=sprintf("\"%s\":%f",name,obj);
+        }
+		else if(_type(obj)=="ARRAY")
+        {
+			ret[0]+=sprintf("\"%s\":[",name);
+            
+            nSize=obj.size();
+			for(i=0;i<nSize;i++)
+            {
+				self.__GenerateJson("",obj[i],ret);
+                if(i<nSize-1)
+					ret[0]+=", ";
+            }
+            
+			ret[0]+="]";
+        }
+        else if(_type(obj)=="DICT")
+        {
+			if(name.size()==0)
+				ret[0]+="{\n";
+            else
+				ret[0]+=sprintf("\"%s\":{\n",name);
+
+            nCount=0;		
+			nSize=obj.size();
+            for(i=obj.begin();!obj.end(i);obj.next(i))
+            {
+                self.__GenerateJson(obj.get(i)[0],obj.get(i)[1],ret);
+                if(nCount<nSize-1)
+					ret[0]+=", \n";	
+                nCount++;
+            }
+			
+			ret[0]+="\n}";
+        }
+		
+    }
+	func CreateJson(obj)
+    {
+		ret=[""];
+		self.__GenerateJson("",obj,ret);
+        text=ret[0];
+        return text;
+    }
+    
+    func WriteFile(filename,text)
+    {
+		f=CFile();
+		if(f.Open(filename,"w"))
+        {
+			f.Write(text);
+			f.Close();
+        }
+    }
+      
+	func Free()
+	{
+		if(self.__lib)
+		{
+			_freelib(self.__lib);
+            self.__lib=null;
+		}
+	}    
+
+}

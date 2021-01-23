@@ -1,0 +1,47 @@
+<?silk
+	printf("Content-type:text/html\n\n");//header
+	args=_getargv()[0]; 
+	upload_enable=args["PARAMS"].find("upload_enable");
+            
+?>    
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Silk Http File Server</title>
+
+<body>
+<h2>Upload file</h2>
+
+<hr>
+<ul>
+	<?silk
+		if(!upload_enable)
+		{
+			response.write("No upload permission.");
+			response.write("</ul></body></html>");
+            return response.content;
+        }
+    ?>
+
+ 	<form method="POST" action="fileserver.si?page=upload_proc.ssp" enctype="multipart/form-data" >
+		
+		  <li>
+			<input name="UploadedFile" type="file"  id="UploadedFile" size="50">		
+		  </li>
+          <br/>
+          
+		  <li>
+		    <input name="Upload" type="submit" class="button button-block button-assertive" value="Upload">
+		  </li>
+
+	</form>
+
+
+
+</ul>
+<hr>
+</body>
+</html>

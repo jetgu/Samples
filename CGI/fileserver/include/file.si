@@ -1,0 +1,47 @@
+class CFile()
+{
+	self.file=null;
+	self.size=0;
+	
+	func Open(filename,mode)
+	{
+		self.file=_fun("fopen",filename,mode);
+		self.size=_fun("fsize",self.file);
+		_fun("fseek",self.file,0);	
+		return self.file;
+	}
+	func ReadAll()
+	{
+		if(self.file==null) 
+			return null;
+		return _fun("fread",self.file,self.size);
+	}
+	func Seek(pos)
+	{
+		if(self.file==null) 
+			return null;
+		_fun("fseek",self.file,pos);
+	}
+	func Read(size)
+	{
+		if(self.file==null) 
+			return null;
+		return _fun("fread",self.file,size);
+	}
+	func Write(content)
+	{
+		if(self.file==null) 
+			return null;
+		_fun("fwrite",self.file,content);
+	
+	}
+	func Close()
+	{
+		//print("close file");
+		if(self.file==null) 
+			return;
+		_fun("fclose",self.file);
+		self.file=null;
+	}
+	
+}

@@ -1,0 +1,14 @@
+#!C:\Silk\Silk.exe
+/*
+上面第一行为Apache读取CGI解释器所在位置，必须以#!开头
+Linux下需替换成Linux的Silk解释器位置
+The top line is the path of Silk Interpreter, which begins with #!
+It will tell Apache the location of the Silk interpreter file
+Please replace it with Linux Silk Interpreter if the CGI is in Linux
+*/
+
+main()
+{
+	printf("Content-type:text/html\n\n");
+    printf("This is a Silk CGI program");
+}

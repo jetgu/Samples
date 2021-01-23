@@ -1,0 +1,62 @@
+<?silk
+#include "./include/file.si"
+
+func upload(upload_path,env)
+{
+    if(upload_path)
+    {
+		post=env["POST"];
+
+		strBoundaryTag="";
+		pos=post.find("\r\n");
+		if(pos>0)
+		{
+			strBoundaryTag="\r\n"+post.substr(0,pos);
+			//print(strBoundaryTag);	
+		}
+		strFilename="";	
+		pos2=post.find("filename=",pos);
+		if(pos2>0)
+		{
+			pos3=post.find("\r\n",pos2);
+			strFilename=post.substr(pos2+9,pos3-pos2-9);
+			if(strFilename.substr(0,1)=="\"")
+				strFilename=strFilename.substr(1,strFilename.size()-2);
+			//print(strFilename);
+		}
+		posBegin=post.find("\r\n\r\n",pos2);
+		posEnd=post.find(strBoundaryTag,posBegin);
+		if(posBegin>0 && posEnd>0)
+		{
+			posBegin+=4;
+			f=CFile();
+			f.Open(upload_path+"/"+strFilename,"wb");
+			//print(upload_path+"/"+strFilename);
+			f.Write(post.substr(posBegin,posEnd-posBegin));
+			f.Close();
+			printf("<html><body>File [%s] Uploaded OK</body></html>",strFilename);
+		
+		}
+
+		
+    }
+}
+
+printf("Content-type:text/html\n\n");
+
+args=_getargv()[0]; 
+params=args["PARAMS"]; 
+env=args["ENV"]; 
+path=params["upload_path"];
+upload_enable=params.find("upload_enable");
+
+
+if(!upload_enable)
+{
+	response.write("No upload permission.");
+	return response.content;
+}
+
+upload(path,env);
+
+?>

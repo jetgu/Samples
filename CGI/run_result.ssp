@@ -1,0 +1,39 @@
+<?silk
+	#include "cgi.si"
+
+	printf("Content-type:text/html\n\n");
+
+	args=_getargv()[0]; 
+	params=args["PARAMS"]; 
+	env=args["ENV"]; 
+
+	post=generate_dict(env["POST"]);
+	code=post.find("code");
+	code=code.replace("+"," ");
+	code=_fun("url_unescape",code);
+
+?>
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Run Silk Code</title>
+
+<body>
+<h2>Run Result:</h2>
+<hr>
+<pre>
+<?silk
+	print(response.content);
+	_fun("run",code,"");
+	response.content="";
+?>
+
+</pre>
+<hr>
+<a href="javascript:history.go(-1);">Back</a> 
+</body>
+</html>

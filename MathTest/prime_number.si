@@ -1,0 +1,83 @@
+//判断101到200之间的素数
+func prime_number()
+{
+	printf("101到200之间的素数: ");
+	for (i=101; i<=200; i++) 
+	{
+		for (j=2; j<i; j++) 
+		{
+			// 如果j能被i整除，跳出循环
+			if (i%j==0) 
+				break;
+		}
+		//判断循环是否提前跳出，如果j<i说明在2~j之间,i有可整除的数
+		if (j>=i) 
+		{
+			printf("%d,",i);
+		}
+	}
+    print("");//换行    
+}
+
+//将一个正整数分解质因数
+func prime_factor(n)
+{
+	printf("%d=",n);
+	for(i=2;i<=n;i++)
+	{
+		while(n%i==0)
+		{
+			printf("%d",i);
+			n=n/i;
+			if(n!=1) printf("*");
+		}
+	}
+    print("");//换行    
+}
+
+//求2个正整数a和b的最大公约数和最小公倍数	
+func GCD_LCM(a,b)
+{
+	if(a<b)
+	{
+		t=b;
+        b=a;
+        a=t;
+    }
+	r=a%b;
+	n=a*b;
+	while(r!=0)
+	{
+		a=b;
+		b=r;
+		r=a%b;
+	}
+	print("greatest common divisor:",b,", least common multiple:",n/b);
+}
+//一个整数，它加上100后是一个完全平方数，再加上268又是一个完全平方数，请问该数是多少？
+func perfect_square()
+{
+    for (i = 1; i < 168 / 2 + 1; i++)
+    {
+        if (168 % i == 0)
+        {
+            j = 168 / i;
+            if ( i > j && (i + j) % 2 == 0 && (i - j) % 2 == 0)
+            {
+                m = (i + j) / 2;
+                n = (i - j) / 2;
+                x = n * n - 100;
+                print (x," + 100 = ", n, " * ", n);
+                print (x," + 268 = ",m," * ", m);
+            }
+        }
+    }
+}
+
+main()
+{
+	prime_number();
+    prime_factor(2021);
+    GCD_LCM(12,56);
+    perfect_square();
+}
